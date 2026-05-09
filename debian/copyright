@@ -1,0 +1,31 @@
+Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
+Upstream-Name: otto
+Upstream-Contact: Linux Mint <root@linuxmint.com>
+Source: https://github.com/linuxmint/otto
+
+Files: *
+Copyright: 2026 Linux Mint
+License: GPL-2+
+
+Files: src/otto/filename.py src/otto/backend_x11.py src/otto/backend_dbus.py
+       src/otto/area_select.py
+Copyright: 2001-2006 Jonathan Blandford <jrb@alum.mit.edu>
+           2008, 2011 Cosimo Cecchi <cosimoc@gnome.org>
+           2020 Alexander Mikhaylenko <alexm@gnome.org>
+           2026 Linux Mint
+License: GPL-2+
+Comment: Adapted from gnome-screenshot.
+
+License: GPL-2+
+ This program is free software; you can redistribute it and/or modify
+ it under the terms of the GNU General Public License as published by
+ the Free Software Foundation; either version 2 of the License, or
+ (at your option) any later version.
+ .
+ This program is distributed in the hope that it will be useful,
+ but WITHOUT ANY WARRANTY; without even the implied warranty of
+ MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ GNU General Public License for more details.
+ .
+ On Debian systems, the complete text of the GNU General Public
+ License version 2 can be found in "/usr/share/common-licenses/GPL-2".

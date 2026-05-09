@@ -1,0 +1,5 @@
+option('x11',
+    type: 'feature',
+    value: 'auto',
+    description: 'Build the X11 fallback backend (requires python3-xlib at runtime)',
+)

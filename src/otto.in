@@ -1,0 +1,6 @@
+#!@PYTHON@
+# otto - screenshot tool for Linux Mint
+import sys
+sys.path.insert(0, '@PKGDATADIR@')
+from otto.application import main
+sys.exit(main())

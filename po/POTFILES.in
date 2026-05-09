@@ -1,0 +1,8 @@
+data/org.x.Otto.desktop.in
+data/org.x.Otto.metainfo.xml.in
+data/ui/options-dialog.ui
+data/ui/preview-window.ui
+src/otto/application.py
+src/otto/ui/options_dialog.py
+src/otto/ui/preview_window.py
+src/otto/ui/editor.py

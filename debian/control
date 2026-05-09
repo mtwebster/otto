@@ -1,0 +1,34 @@
+Source: otto
+Section: utils
+Priority: optional
+Maintainer: Linux Mint <root@linuxmint.com>
+Build-Depends:
+ appstream,
+ debhelper-compat (= 13),
+ gettext,
+ libglib2.0-bin,
+ meson (>= 0.50),
+Standards-Version: 4.6.2
+Homepage: https://github.com/linuxmint/otto
+
+Package: otto
+Architecture: all
+Depends:
+ ${misc:Depends},
+ gir1.2-gdkpixbuf-2.0,
+ gir1.2-gtk-3.0,
+ python3,
+ python3-cairo,
+ python3-gi,
+ python3-pil,
+ python3-xapp,
+Provides: gnome-screenshot
+Replaces: gnome-screenshot
+Conflicts: gnome-screenshot
+Description: screenshot tool for the Cinnamon desktop
+ Otto captures the entire screen, the active window, or a selected
+ area, and offers a quick post-capture editor for cropping, rotating,
+ and flipping the result before saving or copying to the clipboard.
+ .
+ Otto is a drop-in replacement for gnome-screenshot on Linux Mint and
+ keeps its command-line interface compatible.

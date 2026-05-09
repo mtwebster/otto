@@ -1,0 +1,23 @@
+[Desktop Entry]
+Name=Screenshot
+Comment=Save images of your screen or individual windows
+Keywords=snapshot;capture;print;screenshot;
+Exec=otto --interactive
+Terminal=false
+Type=Application
+Icon=applets-screenshooter
+StartupNotify=true
+Categories=GTK;Utility;
+Actions=screen-shot;window-shot;area-shot;
+
+[Desktop Action screen-shot]
+Name=Take a Screenshot of the Whole Screen
+Exec=otto
+
+[Desktop Action window-shot]
+Name=Take a Screenshot of the Current Window
+Exec=otto -w
+
+[Desktop Action area-shot]
+Name=Take a Screenshot of an Area
+Exec=otto -a
