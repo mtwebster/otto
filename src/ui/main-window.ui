@@ -280,18 +280,6 @@ along with Otto.  If not, see <http://www.gnu.org/licenses/>.
             <property name="margin-end">6</property>
             <property name="spacing">6</property>
             <child>
-              <object class="GtkImage">
-                <property name="visible">True</property>
-                <property name="can-focus">False</property>
-                <property name="icon-name">xsi-time-symbolic</property>
-              </object>
-              <packing>
-                <property name="expand">False</property>
-                <property name="fill">True</property>
-                <property name="position">0</property>
-              </packing>
-            </child>
-            <child>
               <object class="GtkButton" id="take_button">
                 <property name="label" translatable="yes">Take Screenshot</property>
                 <property name="visible">True</property>
@@ -325,7 +313,6 @@ along with Otto.  If not, see <http://www.gnu.org/licenses/>.
               <packing>
                 <property name="expand">False</property>
                 <property name="fill">True</property>
-                <property name="pack-type">end</property>
                 <property name="position">1</property>
               </packing>
             </child>
