@@ -42,7 +42,6 @@ class MainWindow:
 
         self.preview_stack = self.builder.get_object('preview_stack')
         self.preview_area = self.builder.get_object('preview_area')
-        self.crop_actions = self.builder.get_object('crop_actions')
 
         self.crop_button = self.builder.get_object('crop_button')
         self.undo_button = self.builder.get_object('undo_button')
@@ -52,7 +51,6 @@ class MainWindow:
         self._pixbuf = None
         self._undo_stack = []
         self._suggested_path = None
-        self._crop_active = False
         self._crop = _CropState()
         self._render_rect = (0, 0, 0, 0, 1.0)
 
@@ -94,6 +92,7 @@ class MainWindow:
             | Gdk.EventMask.BUTTON_RELEASE_MASK
             | Gdk.EventMask.POINTER_MOTION_MASK
         )
+        self.preview_area.connect('realize', self._on_preview_realize)
         self.preview_area.connect('draw', self._on_draw)
         self.preview_area.connect('button-press-event', self._on_press)
         self.preview_area.connect('motion-notify-event', self._on_motion)
@@ -102,14 +101,17 @@ class MainWindow:
         self.crop_button.connect('clicked', self._on_crop)
         self.undo_button.connect('clicked', self._on_undo)
         self.copy_button.connect('clicked', self._on_copy)
-        self.builder.get_object('crop_apply_button').connect('clicked', self._on_crop_apply)
-        self.builder.get_object('crop_cancel_button').connect('clicked', self._on_crop_cancel)
 
         accel = Gtk.AccelGroup()
         accel.connect(Gdk.KEY_z, Gdk.ModifierType.CONTROL_MASK,
                       Gtk.AccelFlags.VISIBLE,
                       lambda *_: self._on_undo(None) or True)
         self.window.add_accel_group(accel)
+
+    def _on_preview_realize(self, widget):
+        widget.get_window().set_cursor(
+            Gdk.Cursor.new_for_display(
+                Gdk.Display.get_default(), Gdk.CursorType.CROSSHAIR))
 
     def _init_actions(self):
         self.save_button.connect('clicked', self._on_save)
@@ -163,9 +165,6 @@ class MainWindow:
         self._capture()
 
     def _capture(self, initial=False):
-        self._crop_active = False
-        self.crop_actions.hide()
-
         mode = self._resolved_mode()
         area_rect = None
         if mode == 'monitor':
@@ -197,6 +196,9 @@ class MainWindow:
             return
         self._pixbuf = pixbuf
         self._undo_stack.clear()
+        self._crop.start = None
+        self._crop.current = None
+        self._crop.dragging = False
         s = self.app.settings
         self._suggested_path = util.build_filename(
             preferred_dir=s.last_save_directory or s.auto_save_directory,
@@ -207,8 +209,9 @@ class MainWindow:
 
     def _update_action_sensitivity(self):
         has_preview = self._pixbuf is not None
+        has_selection = self._current_selection_widget_coords() is not None
         self.preview_stack.set_visible_child_name('preview' if has_preview else 'placeholder')
-        self.crop_button.set_sensitive(has_preview)
+        self.crop_button.set_sensitive(has_preview and has_selection)
         self.copy_button.set_sensitive(has_preview)
         self.save_button.set_sensitive(has_preview)
         self.undo_button.set_sensitive(has_preview and bool(self._undo_stack))
@@ -238,8 +241,7 @@ class MainWindow:
         cr.paint()
         cr.restore()
 
-        if self._crop_active:
-            self._draw_crop_overlay(cr, alloc)
+        self._draw_crop_overlay(cr, alloc)
 
         return False
 
@@ -258,75 +260,50 @@ class MainWindow:
         cr.stroke()
         cr.restore()
 
-    def _set_crop_cursor(self, active):
-        gdk_window = self.preview_area.get_window()
-        if gdk_window is None:
-            return
-        cursor = None
-        if active:
-            cursor = Gdk.Cursor.new_for_display(
-                Gdk.Display.get_default(), Gdk.CursorType.CROSSHAIR)
-        gdk_window.set_cursor(cursor)
-
     def _current_selection_widget_coords(self):
         if self._crop.start is None or self._crop.current is None:
             return None
         x1, y1 = self._crop.start
         x2, y2 = self._crop.current
-        return (min(x1, x2), min(y1, y2), abs(x2 - x1), abs(y2 - y1))
+        w = abs(x2 - x1)
+        h = abs(y2 - y1)
+        if w < 1 or h < 1:
+            return None
+        return (min(x1, x2), min(y1, y2), w, h)
 
     # ------------------------------------------------------------------
     # crop interaction
     # ------------------------------------------------------------------
 
     def _on_press(self, _w, event):
-        if not self._crop_active or event.button != 1:
+        if self._pixbuf is None or event.button != 1:
             return False
         self._crop.start = (event.x, event.y)
         self._crop.current = (event.x, event.y)
         self._crop.dragging = True
         self.preview_area.queue_draw()
+        self._update_action_sensitivity()
         return True
 
     def _on_motion(self, _w, event):
-        if not self._crop_active or not self._crop.dragging:
+        if not self._crop.dragging:
             return False
         self._crop.current = (event.x, event.y)
         self.preview_area.queue_draw()
         return True
 
     def _on_release(self, _w, event):
-        if not self._crop_active or event.button != 1 or not self._crop.dragging:
+        if not self._crop.dragging or event.button != 1:
             return False
         self._crop.current = (event.x, event.y)
         self._crop.dragging = False
         self.preview_area.queue_draw()
+        self._update_action_sensitivity()
         return True
 
     def _on_crop(self, _button):
-        if self._pixbuf is None:
-            return
-        self._crop_active = True
-        self._crop.start = None
-        self._crop.current = None
-        self._crop.dragging = False
-        self.crop_actions.show()
-        self._set_crop_cursor(True)
-        self.preview_area.queue_draw()
-
-    def _on_crop_cancel(self, _button):
-        self._crop_active = False
-        self.crop_actions.hide()
-        self._set_crop_cursor(False)
-        self.preview_area.queue_draw()
-
-    def _on_crop_apply(self, _button):
         sel = self._current_selection_widget_coords()
-        self._crop_active = False
-        self.crop_actions.hide()
-        self._set_crop_cursor(False)
-        if sel is None:
-            self.preview_area.queue_draw()
+        if self._pixbuf is None or sel is None:
             return
         sx, sy, sw, sh = sel
         rx, ry, _rw, _rh, scale = self._render_rect
@@ -336,6 +313,8 @@ class MainWindow:
         py = (sy - ry) / scale
         pw = sw / scale
         ph = sh / scale
+        self._crop.start = None
+        self._crop.current = None
         self._apply(lambda p: editor.crop(p, int(px), int(py), int(pw), int(ph)))
 
     def _apply(self, op):
