@@ -16,5 +16,12 @@ install_data(
 )
 
 subdir('backends')
-subdir('icons')
 subdir('ui')
+
+gnome.compile_resources(
+    'otto',
+    'otto.gresource.xml',
+    gresource_bundle: true,
+    install: true,
+    install_dir: pkgdatadir,
+)

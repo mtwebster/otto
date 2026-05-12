@@ -2,7 +2,7 @@ import os
 
 import gi
 gi.require_version('Gtk', '3.0')
-from gi.repository import Gdk, GdkPixbuf, Gio, GLib, Gtk
+from gi.repository import Gdk, Gio, GLib, Gtk
 
 import _config
 import util
@@ -10,17 +10,12 @@ from . import editor
 
 
 UI_FILE = os.path.join(_config.PKGDATADIR, 'ui', 'main-window.ui')
-ICON_DIR = os.path.join(_config.PKGDATADIR, 'icons')
 
 DELAY_VALUES = (0, 2, 4, 8)
 
-
-def _set_image_icon(image, filename, size):
-    scale = image.get_scale_factor()
-    pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
-        os.path.join(ICON_DIR, filename), size * scale, size * scale, True)
-    surface = Gdk.cairo_surface_create_from_pixbuf(pixbuf, scale, None)
-    image.set_from_surface(surface)
+_resource = Gio.Resource.load(os.path.join(_config.PKGDATADIR, 'otto.gresource'))
+Gio.resources_register(_resource)
+Gtk.IconTheme.get_default().add_resource_path('/org/x/Otto/icons')
 
 
 class _CropState:
@@ -76,14 +71,6 @@ class MainWindow:
     # ------------------------------------------------------------------
 
     def _init_options(self):
-        for image_id, filename in (
-            ('mode_screen_icon',  'otto-display-symbolic.svg'),
-            ('mode_monitor_icon', 'otto-display-symbolic.svg'),
-            ('mode_window_icon',  'otto-window-symbolic.svg'),
-            ('mode_area_icon',    'otto-selection-symbolic.svg'),
-        ):
-            _set_image_icon(self.builder.get_object(image_id), filename, 32)
-
         self.mode_monitor.set_sensitive(Gdk.Display.get_default().get_n_monitors() > 1)
 
         s = self.app.settings
