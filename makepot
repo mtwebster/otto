@@ -8,5 +8,4 @@ xgettext --package-name=otto --language=Python -c --join-existing --add-comments
          --output=otto.pot --files-from=src/gettext_files
 xgettext --package-name=otto --language=Desktop --join-existing \
          -k --keyword=Comment --output=otto.pot data/org.x.Otto.desktop.in
-xgettext --package-name=otto --its=/usr/share/gettext/its/metainfo.its --join-existing --add-comments \
-         --output=otto.pot data/org.x.Otto.metainfo.xml.in
+

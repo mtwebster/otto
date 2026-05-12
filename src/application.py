@@ -138,25 +138,25 @@ class OttoApplication(Gtk.Application):
 def _build_arg_parser():
     parser = argparse.ArgumentParser(
         prog='otto',
-        description=_('Take screenshots of your screen, windows, or selected areas'),
+        description='Take screenshots of your screen, windows, or selected areas',
         add_help=True,
     )
     parser.add_argument('-c', '--clipboard', action='store_true',
-                        help=_('Send the grab directly to the clipboard'))
+                        help='Send the grab directly to the clipboard')
     parser.add_argument('-w', '--window', action='store_true',
-                        help=_('Grab the active window instead of the entire screen'))
+                        help='Grab the active window instead of the entire screen')
     parser.add_argument('-a', '--area', action='store_true',
-                        help=_('Grab a selected area of the screen'))
+                        help='Grab a selected area of the screen')
     parser.add_argument('-p', '--include-pointer', action='store_true',
-                        help=_('Include the pointer in the screenshot'))
+                        help='Include the pointer in the screenshot')
     parser.add_argument('-d', '--delay', type=int, default=None, metavar='SECONDS',
-                        help=_('Take the screenshot after a delay'))
+                        help='Take the screenshot after a delay')
     parser.add_argument('-i', '--interactive', action='store_true',
-                        help=_('Interactively set options before taking the screenshot'))
+                        help='Interactively set options before taking the screenshot')
     parser.add_argument('-f', '--file', metavar='PATH',
-                        help=_('Save the screenshot directly to PATH'))
+                        help='Save the screenshot directly to PATH')
     parser.add_argument('--version', action='store_true',
-                        help=_('Print version and exit'))
+                        help='Print version and exit')
     return parser
 
 def main():
@@ -168,7 +168,7 @@ def main():
         return 0
 
     if args.window and args.area:
-        parser.error(_('cannot combine --window and --area'))
+        parser.error('cannot combine --window and --area')
 
     app = OttoApplication(args)
     app.run([])
