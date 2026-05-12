@@ -1,0 +1,399 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <requires lib="gtk+" version="3.20"/>
+  <object class="GtkAdjustment" id="delay_adjustment">
+    <property name="lower">0</property>
+    <property name="upper">99</property>
+    <property name="step-increment">1</property>
+    <property name="page-increment">5</property>
+  </object>
+
+  <object class="GtkApplicationWindow" id="window">
+    <property name="title" translatable="yes">Screenshot</property>
+    <property name="default-width">600</property>
+    <property name="default-height">500</property>
+
+    <child type="titlebar">
+      <object class="GtkHeaderBar" id="headerbar">
+        <property name="visible">True</property>
+        <property name="show-close-button">True</property>
+        <property name="title" translatable="yes">Screenshot</property>
+        <child>
+          <object class="GtkButton" id="back_button">
+            <property name="visible">False</property>
+            <property name="no-show-all">True</property>
+            <property name="tooltip-text" translatable="yes">Back</property>
+            <child>
+              <object class="GtkImage">
+                <property name="visible">True</property>
+                <property name="icon-name">go-previous-symbolic</property>
+              </object>
+            </child>
+          </object>
+        </child>
+        <child>
+          <object class="GtkMenuButton" id="menu_button">
+            <property name="visible">True</property>
+            <property name="tooltip-text" translatable="yes">Menu</property>
+            <child>
+              <object class="GtkImage">
+                <property name="visible">True</property>
+                <property name="icon-name">xsi-open-menu-symbolic</property>
+              </object>
+            </child>
+          </object>
+          <packing>
+            <property name="pack-type">end</property>
+          </packing>
+        </child>
+      </object>
+    </child>
+
+    <child>
+      <object class="GtkBox">
+        <property name="visible">True</property>
+        <property name="orientation">vertical</property>
+
+        <child>
+          <object class="GtkStack" id="stack">
+            <property name="visible">True</property>
+            <property name="expand">True</property>
+            <property name="transition-type">slide-left-right</property>
+
+            <!-- Landing page -->
+            <child>
+              <object class="GtkBox" id="landing_page">
+                <property name="visible">True</property>
+                <property name="orientation">vertical</property>
+                <property name="spacing">18</property>
+                <property name="margin">24</property>
+
+                <child>
+                  <object class="GtkLabel">
+                    <property name="visible">True</property>
+                    <property name="xalign">0</property>
+                    <property name="label" translatable="yes">Capture Area</property>
+                    <attributes>
+                      <attribute name="weight" value="bold"/>
+                    </attributes>
+                  </object>
+                </child>
+
+                <child>
+                  <object class="GtkBox" id="mode_box">
+                    <property name="visible">True</property>
+                    <property name="orientation">horizontal</property>
+                    <property name="homogeneous">True</property>
+                    <property name="spacing">6</property>
+
+                    <child>
+                      <object class="GtkRadioButton" id="mode_screen">
+                        <property name="visible">True</property>
+                        <property name="active">True</property>
+                        <property name="draw-indicator">False</property>
+                        <property name="tooltip-text" translatable="yes">Capture the whole screen</property>
+                        <child>
+                          <object class="GtkBox">
+                            <property name="visible">True</property>
+                            <property name="orientation">vertical</property>
+                            <property name="spacing">6</property>
+                            <property name="margin">8</property>
+                            <child>
+                              <object class="GtkImage">
+                                <property name="visible">True</property>
+                                <property name="icon-name">otto-display-symbolic</property>
+                                <property name="pixel-size">32</property>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkLabel">
+                                <property name="visible">True</property>
+                                <property name="label" translatable="yes">Screen</property>
+                              </object>
+                            </child>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+
+                    <child>
+                      <object class="GtkRadioButton" id="mode_window">
+                        <property name="visible">True</property>
+                        <property name="group">mode_screen</property>
+                        <property name="draw-indicator">False</property>
+                        <property name="tooltip-text" translatable="yes">Capture the active window</property>
+                        <child>
+                          <object class="GtkBox">
+                            <property name="visible">True</property>
+                            <property name="orientation">vertical</property>
+                            <property name="spacing">6</property>
+                            <property name="margin">8</property>
+                            <child>
+                              <object class="GtkImage">
+                                <property name="visible">True</property>
+                                <property name="icon-name">otto-window-symbolic</property>
+                                <property name="pixel-size">32</property>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkLabel">
+                                <property name="visible">True</property>
+                                <property name="label" translatable="yes">Window</property>
+                              </object>
+                            </child>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+
+                    <child>
+                      <object class="GtkRadioButton" id="mode_area">
+                        <property name="visible">True</property>
+                        <property name="group">mode_screen</property>
+                        <property name="draw-indicator">False</property>
+                        <property name="tooltip-text" translatable="yes">Capture a selected area</property>
+                        <child>
+                          <object class="GtkBox">
+                            <property name="visible">True</property>
+                            <property name="orientation">vertical</property>
+                            <property name="spacing">6</property>
+                            <property name="margin">8</property>
+                            <child>
+                              <object class="GtkImage">
+                                <property name="visible">True</property>
+                                <property name="icon-name">otto-selection-symbolic</property>
+                                <property name="pixel-size">32</property>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkLabel">
+                                <property name="visible">True</property>
+                                <property name="label" translatable="yes">Selection</property>
+                              </object>
+                            </child>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+
+                <child>
+                  <object class="GtkGrid">
+                    <property name="visible">True</property>
+                    <property name="column-spacing">12</property>
+                    <property name="row-spacing">8</property>
+
+                    <child>
+                      <object class="GtkLabel">
+                        <property name="visible">True</property>
+                        <property name="xalign">0</property>
+                        <property name="label" translatable="yes">Show Pointer</property>
+                      </object>
+                      <packing>
+                        <property name="left-attach">0</property>
+                        <property name="top-attach">0</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkSwitch" id="pointer_switch">
+                        <property name="visible">True</property>
+                        <property name="halign">end</property>
+                      </object>
+                      <packing>
+                        <property name="left-attach">1</property>
+                        <property name="top-attach">0</property>
+                      </packing>
+                    </child>
+
+                    <child>
+                      <object class="GtkLabel">
+                        <property name="visible">True</property>
+                        <property name="xalign">0</property>
+                        <property name="label" translatable="yes">Delay (seconds)</property>
+                      </object>
+                      <packing>
+                        <property name="left-attach">0</property>
+                        <property name="top-attach">1</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkSpinButton" id="delay_spin">
+                        <property name="visible">True</property>
+                        <property name="halign">end</property>
+                        <property name="numeric">True</property>
+                        <property name="adjustment">delay_adjustment</property>
+                      </object>
+                      <packing>
+                        <property name="left-attach">1</property>
+                        <property name="top-attach">1</property>
+                      </packing>
+                    </child>
+                  </object>
+                </child>
+
+                <child>
+                  <object class="GtkButton" id="take_button">
+                    <property name="visible">True</property>
+                    <property name="label" translatable="yes">Take Screenshot</property>
+                    <property name="halign">center</property>
+                    <property name="margin-top">6</property>
+                    <style>
+                      <class name="suggested-action"/>
+                    </style>
+                  </object>
+                </child>
+              </object>
+              <packing>
+                <property name="name">landing</property>
+              </packing>
+            </child>
+
+            <!-- Preview page -->
+            <child>
+              <object class="GtkBox" id="preview_page">
+                <property name="visible">True</property>
+                <property name="orientation">vertical</property>
+                <property name="spacing">0</property>
+
+                <child>
+                  <object class="GtkBox" id="edit_toolbar">
+                    <property name="visible">True</property>
+                    <property name="orientation">horizontal</property>
+                    <property name="spacing">6</property>
+                    <property name="margin">8</property>
+                    <property name="halign">center</property>
+
+                    <child>
+                      <object class="GtkButton" id="crop_button">
+                        <property name="visible">True</property>
+                        <property name="tooltip-text" translatable="yes">Crop</property>
+                        <child>
+                          <object class="GtkImage">
+                            <property name="visible">True</property>
+                            <property name="icon-name">edit-cut-symbolic</property>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+
+                    <child>
+                      <object class="GtkButton" id="undo_button">
+                        <property name="visible">True</property>
+                        <property name="sensitive">False</property>
+                        <property name="tooltip-text" translatable="yes">Undo last edit</property>
+                        <child>
+                          <object class="GtkImage">
+                            <property name="visible">True</property>
+                            <property name="icon-name">edit-undo-symbolic</property>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+
+                    <child>
+                      <object class="GtkSeparator">
+                        <property name="visible">True</property>
+                        <property name="orientation">vertical</property>
+                      </object>
+                    </child>
+
+                    <child>
+                      <object class="GtkButton" id="copy_button">
+                        <property name="visible">True</property>
+                        <property name="tooltip-text" translatable="yes">Copy to clipboard</property>
+                        <child>
+                          <object class="GtkImage">
+                            <property name="visible">True</property>
+                            <property name="icon-name">edit-copy-symbolic</property>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+
+                <child>
+                  <object class="GtkSeparator">
+                    <property name="visible">True</property>
+                    <property name="orientation">horizontal</property>
+                  </object>
+                </child>
+
+                <child>
+                  <object class="GtkOverlay" id="preview_overlay">
+                    <property name="visible">True</property>
+                    <property name="expand">True</property>
+                    <child>
+                      <object class="GtkDrawingArea" id="preview_area">
+                        <property name="visible">True</property>
+                        <property name="expand">True</property>
+                      </object>
+                    </child>
+                    <child type="overlay">
+                      <object class="GtkBox" id="crop_actions">
+                        <property name="visible">False</property>
+                        <property name="no-show-all">True</property>
+                        <property name="orientation">horizontal</property>
+                        <property name="spacing">6</property>
+                        <property name="margin">12</property>
+                        <property name="halign">center</property>
+                        <property name="valign">end</property>
+                        <child>
+                          <object class="GtkButton" id="crop_cancel_button">
+                            <property name="visible">True</property>
+                            <property name="label" translatable="yes">Cancel</property>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkButton" id="crop_apply_button">
+                            <property name="visible">True</property>
+                            <property name="label" translatable="yes">Apply</property>
+                            <style>
+                              <class name="suggested-action"/>
+                            </style>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+              </object>
+              <packing>
+                <property name="name">preview</property>
+              </packing>
+            </child>
+          </object>
+        </child>
+
+        <child>
+          <object class="GtkActionBar" id="action_bar">
+            <property name="visible">False</property>
+            <property name="no-show-all">True</property>
+            <child>
+              <object class="GtkButton" id="save_button">
+                <property name="visible">True</property>
+                <property name="label" translatable="yes">Save</property>
+                <style>
+                  <class name="suggested-action"/>
+                </style>
+              </object>
+              <packing>
+                <property name="pack-type">end</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkButton" id="cancel_button">
+                <property name="visible">True</property>
+                <property name="label" translatable="yes">Cancel</property>
+              </object>
+              <packing>
+                <property name="pack-type">end</property>
+              </packing>
+            </child>
+          </object>
+        </child>
+      </object>
+    </child>
+  </object>
+</interface>

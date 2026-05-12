@@ -7,18 +7,17 @@ import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gio, GLib, Gtk
 
-from . import _config
-from . import backend
-from . import filename as filename_module
-from . import util
-from .config import Settings
+import _config
+import backend
+import util
+from config import Settings
 
 
 _ = gettext.gettext
 
 
 class OttoApplication(Gtk.Application):
-    def __init__(self, args: argparse.Namespace):
+    def __init__(self, args):
         super().__init__(
             application_id='org.x.Otto',
             flags=Gio.ApplicationFlags.NON_UNIQUE,
@@ -39,33 +38,35 @@ class OttoApplication(Gtk.Application):
         else:
             self._run_quick_capture()
 
-    def _resolve_mode(self) -> str:
+    def _resolve_mode(self):
         if self.args.window:
             return 'window'
         if self.args.area:
             return 'area'
         return 'screen'
 
-    def _capture_now(self, mode: str, include_pointer: bool, flash: bool):
-        try:
-            if mode == 'window':
-                return self.backend.screenshot_window(include_pointer, True, flash)
-            if mode == 'area':
-                rect = self.backend.select_area()
-                if rect is None:
-                    return None
-                x, y, w, h = rect
-                return self.backend.screenshot_area(x, y, w, h, flash)
-            return self.backend.screenshot(include_pointer, flash)
-        except Exception as exc:
-            print(f'otto: capture failed: {exc}', file=sys.stderr)
-            return None
-
-    def capture(self, mode: str, include_pointer: bool, delay: int, on_done):
+    def capture(self, mode, include_pointer, delay, on_done):
         flash = True
 
+        area_rect = None
+        if mode == 'area':
+            area_rect = self.backend.select_area()
+            if area_rect is None:
+                on_done(None)
+                return
+
         def do_capture():
-            pixbuf = self._capture_now(mode, include_pointer, flash)
+            try:
+                if area_rect is not None:
+                    x, y, w, h = area_rect
+                    pixbuf = self.backend.screenshot_area(x, y, w, h, flash)
+                elif mode == 'window':
+                    pixbuf = self.backend.screenshot_window(include_pointer, True, flash)
+                else:
+                    pixbuf = self.backend.screenshot(include_pointer, flash)
+            except Exception as exc:
+                print(f'otto: capture failed: {exc}', file=sys.stderr)
+                pixbuf = None
             on_done(pixbuf)
             return GLib.SOURCE_REMOVE
 
@@ -91,9 +92,9 @@ class OttoApplication(Gtk.Application):
         self.capture(mode, include_pointer, delay, done)
 
     def _run_interactive(self):
-        from .ui.options_dialog import OptionsDialog
-        dialog = OptionsDialog(self)
-        dialog.show_all()
+        from ui.main_window import MainWindow
+        win = MainWindow(self)
+        win.show_landing()
 
     def _run_clipboard(self):
         self.hold()
@@ -117,7 +118,7 @@ class OttoApplication(Gtk.Application):
         self.quit()
         return GLib.SOURCE_REMOVE
 
-    def _run_save_to_file(self, path: str):
+    def _run_save_to_file(self, path):
         self.hold()
         mode = self._resolve_mode()
         include_pointer = self.args.include_pointer or self.settings.include_pointer
@@ -138,20 +139,20 @@ class OttoApplication(Gtk.Application):
         self.capture(mode, include_pointer, delay, done)
 
     def _show_preview(self, pixbuf):
-        from .ui.preview_window import PreviewWindow
-        suggested = filename_module.build_filename(
+        from ui.main_window import MainWindow
+        suggested = util.build_filename(
             preferred_dir=self.settings.last_save_directory or self.settings.auto_save_directory,
             file_type=self.settings.default_file_type or 'png',
         )
-        win = PreviewWindow(self, pixbuf, suggested_path=suggested)
-        win.show_all()
+        win = MainWindow(self)
+        win.show_preview(pixbuf, suggested)
 
     @property
-    def exit_code(self) -> int:
+    def exit_code(self):
         return self._exit_code
 
 
-def _build_arg_parser() -> argparse.ArgumentParser:
+def _build_arg_parser():
     parser = argparse.ArgumentParser(
         prog='otto',
         description=_('Take screenshots of your screen, windows, or selected areas'),
@@ -182,7 +183,7 @@ def _build_arg_parser() -> argparse.ArgumentParser:
     return parser
 
 
-def _warn_deprecated(args: argparse.Namespace) -> None:
+def _warn_deprecated(args):
     if args.include_border or args.remove_border:
         print('otto: --include-border / --remove-border are deprecated and ignored',
               file=sys.stderr)
@@ -190,7 +191,7 @@ def _warn_deprecated(args: argparse.Namespace) -> None:
         print('otto: --border-effect is deprecated and ignored', file=sys.stderr)
 
 
-def main() -> int:
+def main():
     gettext.bindtextdomain(_config.GETTEXT_PACKAGE, _config.LOCALEDIR)
     gettext.textdomain(_config.GETTEXT_PACKAGE)
 

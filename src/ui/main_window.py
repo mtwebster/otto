@@ -2,43 +2,70 @@ import os
 
 import gi
 gi.require_version('Gtk', '3.0')
-from gi.repository import Gdk, GdkPixbuf, GLib, Gtk
+from gi.repository import Gdk, Gio, GLib, Gtk
 
-from .. import _config
-from .. import util
+import _config
+import util
 from . import editor
 
 
-UI_FILE = os.path.join(_config.PKGDATADIR, 'ui', 'preview-window.ui')
+UI_FILE = os.path.join(_config.PKGDATADIR, 'ui', 'main-window.ui')
 
 
 class _CropState:
-    __slots__ = ('start', 'current', 'committed')
-
     def __init__(self):
-        self.start: tuple[float, float] | None = None
-        self.current: tuple[float, float] | None = None
-        self.committed: tuple[float, float, float, float] | None = None
+        self.start = None
+        self.current = None
 
 
-class PreviewWindow:
-    def __init__(self, app, pixbuf: GdkPixbuf.Pixbuf, suggested_path: str):
+class MainWindow:
+    def __init__(self, app):
         self.app = app
-        self._pixbuf = pixbuf
-        self._undo: GdkPixbuf.Pixbuf | None = None
-        self._suggested_path = suggested_path
-        self._crop_active = False
-        self._crop = _CropState()
-        self._render_rect = (0, 0, 0, 0, 1.0)  # x, y, w, h, scale (preview-coords)
-
         self.builder = Gtk.Builder.new_from_file(UI_FILE)
-        self.window: Gtk.ApplicationWindow = self.builder.get_object('window')
+        self.window = self.builder.get_object('window')
         self.window.set_application(app)
 
-        self.preview_area: Gtk.DrawingArea = self.builder.get_object('preview_area')
-        self.crop_actions: Gtk.Box = self.builder.get_object('crop_actions')
-        self.undo_button: Gtk.Button = self.builder.get_object('undo_button')
+        self.stack = self.builder.get_object('stack')
+        self.back_button = self.builder.get_object('back_button')
+        self.action_bar = self.builder.get_object('action_bar')
 
+        self.mode_screen = self.builder.get_object('mode_screen')
+        self.mode_window = self.builder.get_object('mode_window')
+        self.mode_area = self.builder.get_object('mode_area')
+        self.pointer_switch = self.builder.get_object('pointer_switch')
+        self.delay_spin = self.builder.get_object('delay_spin')
+        self.take_button = self.builder.get_object('take_button')
+
+        self.preview_area = self.builder.get_object('preview_area')
+        self.crop_actions = self.builder.get_object('crop_actions')
+        self.undo_button = self.builder.get_object('undo_button')
+
+        self._pixbuf = None
+        self._undo = None
+        self._suggested_path = None
+        self._crop_active = False
+        self._crop = _CropState()
+        self._render_rect = (0, 0, 0, 0, 1.0)
+
+        self._init_landing()
+        self._init_preview()
+        self._init_chrome()
+
+    def _init_landing(self):
+        s = self.app.settings
+        self.delay_spin.set_value(s.delay)
+        self.pointer_switch.set_active(s.include_pointer)
+        if self.app.args.window:
+            self.mode_window.set_active(True)
+        elif self.app.args.area:
+            self.mode_area.set_active(True)
+
+        for radio in (self.mode_screen, self.mode_window, self.mode_area):
+            radio.connect('toggled', self._on_mode_toggled)
+        self.take_button.connect('clicked', self._on_take_clicked)
+        self._on_mode_toggled(None)
+
+    def _init_preview(self):
         self.preview_area.add_events(
             Gdk.EventMask.BUTTON_PRESS_MASK
             | Gdk.EventMask.BUTTON_RELEASE_MASK
@@ -49,36 +76,127 @@ class PreviewWindow:
         self.preview_area.connect('motion-notify-event', self._on_motion)
         self.preview_area.connect('button-release-event', self._on_release)
 
-        self.builder.get_object('cancel_button').connect('clicked', self._on_cancel)
-        self.builder.get_object('save_button').connect('clicked', self._on_save)
-        self.builder.get_object('copy_button').connect('clicked', self._on_copy)
         self.builder.get_object('crop_button').connect('clicked', self._on_crop)
-        self.builder.get_object('rotate_cw_button').connect('clicked',
-            lambda _b: self._apply(editor.rotate_cw))
-        self.builder.get_object('rotate_ccw_button').connect('clicked',
-            lambda _b: self._apply(editor.rotate_ccw))
-        self.builder.get_object('flip_h_button').connect('clicked',
-            lambda _b: self._apply(editor.flip_horizontal))
-        self.builder.get_object('flip_v_button').connect('clicked',
-            lambda _b: self._apply(editor.flip_vertical))
         self.undo_button.connect('clicked', self._on_undo)
+        self.builder.get_object('copy_button').connect('clicked', self._on_copy)
         self.builder.get_object('crop_apply_button').connect('clicked', self._on_crop_apply)
         self.builder.get_object('crop_cancel_button').connect('clicked', self._on_crop_cancel)
 
         accel = Gtk.AccelGroup()
         accel.connect(Gdk.KEY_z, Gdk.ModifierType.CONTROL_MASK,
-                      Gtk.AccelFlags.VISIBLE, lambda *_: self._on_undo(None) or True)
+                      Gtk.AccelFlags.VISIBLE,
+                      lambda *_: self._on_undo(None) or True)
         self.window.add_accel_group(accel)
 
-    def show_all(self):
+    def _init_chrome(self):
+        self.back_button.connect('clicked', self._on_back)
+        self.builder.get_object('cancel_button').connect('clicked', self._on_cancel)
+        self.builder.get_object('save_button').connect('clicked', self._on_save)
+
+        about_action = Gio.SimpleAction.new('about', None)
+        about_action.connect('activate', self._on_about)
+        self.window.add_action(about_action)
+
+        menu = Gio.Menu()
+        menu.append('About Otto', 'win.about')
+        self.builder.get_object('menu_button').set_menu_model(menu)
+
+    # ------------------------------------------------------------------
+    # page navigation
+    # ------------------------------------------------------------------
+
+    def show_landing(self):
+        self._set_page('landing')
+        self.window.show_all()
+        self._update_chrome()
+
+    def show_preview(self, pixbuf, suggested_path):
+        self._pixbuf = pixbuf
+        self._undo = None
+        self._suggested_path = suggested_path
+        self._crop_active = False
+        self.undo_button.set_sensitive(False)
+        self.crop_actions.hide()
+        self._set_page('preview')
         self.window.show_all()
         self.crop_actions.hide()
+        self.preview_area.queue_draw()
+        self._update_chrome()
+
+    def _set_page(self, name):
+        self.stack.set_visible_child_name(name)
+
+    def _update_chrome(self):
+        is_preview = self.stack.get_visible_child_name() == 'preview'
+        self.back_button.set_visible(is_preview)
+        self.action_bar.set_visible(is_preview)
+
+    def _on_back(self, _b):
+        self._pixbuf = None
+        self._undo = None
+        self._crop_active = False
+        self.crop_actions.hide()
+        self._set_page('landing')
+        self._update_chrome()
+
+    def _on_about(self, _action, _param):
+        about = Gtk.AboutDialog(transient_for=self.window, modal=True)
+        about.set_program_name('Otto')
+        about.set_version(_config.VERSION)
+        about.set_comments('Screenshot tool for the Cinnamon desktop')
+        about.set_copyright('© 2026 Linux Mint')
+        about.set_license_type(Gtk.License.GPL_2_0)
+        about.set_website('https://github.com/linuxmint/otto')
+        about.set_website_label('linuxmint/otto on GitHub')
+        about.set_logo_icon_name('applets-screenshooter')
+        about.run()
+        about.destroy()
 
     # ------------------------------------------------------------------
-    # rendering
+    # landing page
     # ------------------------------------------------------------------
 
-    def _on_draw(self, widget: Gtk.DrawingArea, cr) -> bool:
+    def _on_mode_toggled(self, _radio):
+        self.pointer_switch.set_sensitive(not self.mode_area.get_active())
+
+    def _resolved_mode(self):
+        if self.mode_window.get_active():
+            return 'window'
+        if self.mode_area.get_active():
+            return 'area'
+        return 'screen'
+
+    def _on_take_clicked(self, _b):
+        mode = self._resolved_mode()
+        include_pointer = self.pointer_switch.get_active() and mode != 'area'
+        delay = int(self.delay_spin.get_value())
+
+        s = self.app.settings
+        s.delay = delay
+        s.include_pointer = self.pointer_switch.get_active()
+
+        self.window.hide()
+
+        def done(pixbuf):
+            if pixbuf is None:
+                self.window.show()
+                self._update_chrome()
+                return
+            suggested = util.build_filename(
+                preferred_dir=s.last_save_directory or s.auto_save_directory,
+                file_type=s.default_file_type or 'png',
+            )
+            self.show_preview(pixbuf, suggested)
+
+        self.app.capture(mode, include_pointer, delay, done)
+
+    # ------------------------------------------------------------------
+    # preview rendering
+    # ------------------------------------------------------------------
+
+    def _on_draw(self, widget, cr):
+        if self._pixbuf is None:
+            return False
         alloc = widget.get_allocation()
         pw, ph = self._pixbuf.get_width(), self._pixbuf.get_height()
         if pw == 0 or ph == 0:
@@ -103,7 +221,6 @@ class PreviewWindow:
         return False
 
     def _draw_crop_overlay(self, cr, alloc):
-        rx, ry, rw, rh, _ = self._render_rect
         cr.save()
         cr.set_source_rgba(0, 0, 0, 0.5)
         cr.rectangle(0, 0, alloc.width, alloc.height)
@@ -122,7 +239,7 @@ class PreviewWindow:
             cr.stroke()
         cr.restore()
 
-    def _current_selection_widget_coords(self) -> tuple[float, float, float, float] | None:
+    def _current_selection_widget_coords(self):
         if self._crop.start is None or self._crop.current is None:
             return None
         x1, y1 = self._crop.start
@@ -203,7 +320,7 @@ class PreviewWindow:
         self.preview_area.queue_draw()
 
     # ------------------------------------------------------------------
-    # save / copy / cancel
+    # action bar
     # ------------------------------------------------------------------
 
     def _on_cancel(self, _button):

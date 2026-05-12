@@ -7,14 +7,13 @@ Files: *
 Copyright: 2026 Linux Mint
 License: GPL-2+
 
-Files: src/otto/filename.py src/otto/backend_x11.py src/otto/backend_dbus.py
-       src/otto/area_select.py
+Files: src/util.py src/backends/cinnamon.py src/backends/x11.py
 Copyright: 2001-2006 Jonathan Blandford <jrb@alum.mit.edu>
            2008, 2011 Cosimo Cecchi <cosimoc@gnome.org>
            2020 Alexander Mikhaylenko <alexm@gnome.org>
            2026 Linux Mint
 License: GPL-2+
-Comment: Adapted from gnome-screenshot.
+Comment: Portions adapted from gnome-screenshot.
 
 License: GPL-2+
  This program is free software; you can redistribute it and/or modify

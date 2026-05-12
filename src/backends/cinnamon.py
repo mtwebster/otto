@@ -3,7 +3,7 @@ import tempfile
 
 from gi.repository import GdkPixbuf, Gio, GLib
 
-from .backend import Backend
+from backend import Backend
 
 
 BUS_NAME = 'org.gnome.Shell.Screenshot'
@@ -11,7 +11,7 @@ OBJECT_PATH = '/org/gnome/Shell/Screenshot'
 INTERFACE = 'org.gnome.Shell.Screenshot'
 
 
-def dbus_service_available() -> bool:
+def service_available():
     try:
         bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
         result = bus.call_sync(
@@ -30,11 +30,11 @@ def dbus_service_available() -> bool:
         return False
 
 
-class DBusBackend(Backend):
+class CinnamonBackend(Backend):
     def __init__(self):
         self._bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
 
-    def _tempfile(self) -> str:
+    def _tempfile(self):
         cache_dir = os.path.join(GLib.get_user_cache_dir(), 'otto')
         os.makedirs(cache_dir, mode=0o700, exist_ok=True)
         fd, path = tempfile.mkstemp(prefix='scr-', suffix='.png', dir=cache_dir)
@@ -42,7 +42,7 @@ class DBusBackend(Backend):
         os.unlink(path)
         return path
 
-    def _call(self, method: str, params: GLib.Variant) -> tuple[bool, str] | None:
+    def _call(self, method, params):
         try:
             result = self._bus.call_sync(
                 BUS_NAME, OBJECT_PATH, INTERFACE, method,
@@ -56,7 +56,7 @@ class DBusBackend(Backend):
             return None
         return result.unpack()
 
-    def _load_and_unlink(self, path: str) -> GdkPixbuf.Pixbuf | None:
+    def _load_and_unlink(self, path):
         try:
             pixbuf = GdkPixbuf.Pixbuf.new_from_file(path)
         except GLib.Error:
@@ -67,7 +67,7 @@ class DBusBackend(Backend):
             pass
         return pixbuf
 
-    def screenshot(self, include_pointer: bool, flash: bool) -> GdkPixbuf.Pixbuf | None:
+    def screenshot(self, include_pointer, flash):
         path = self._tempfile()
         result = self._call('Screenshot',
                             GLib.Variant('(bbs)', (include_pointer, flash, path)))
@@ -75,7 +75,7 @@ class DBusBackend(Backend):
             return None
         return self._load_and_unlink(result[1] or path)
 
-    def screenshot_window(self, include_pointer: bool, include_frame: bool, flash: bool) -> GdkPixbuf.Pixbuf | None:
+    def screenshot_window(self, include_pointer, include_frame, flash):
         path = self._tempfile()
         result = self._call('ScreenshotWindow',
                             GLib.Variant('(bbbs)', (include_frame, include_pointer, flash, path)))
@@ -83,7 +83,7 @@ class DBusBackend(Backend):
             return None
         return self._load_and_unlink(result[1] or path)
 
-    def screenshot_area(self, x: int, y: int, w: int, h: int, flash: bool) -> GdkPixbuf.Pixbuf | None:
+    def screenshot_area(self, x, y, w, h, flash):
         path = self._tempfile()
         result = self._call('ScreenshotArea',
                             GLib.Variant('(iiiibs)', (x, y, w, h, flash, path)))
@@ -91,7 +91,7 @@ class DBusBackend(Backend):
             return None
         return self._load_and_unlink(result[1] or path)
 
-    def select_area(self) -> tuple[int, int, int, int] | None:
+    def select_area(self):
         try:
             result = self._bus.call_sync(
                 BUS_NAME, OBJECT_PATH, INTERFACE, 'SelectArea',

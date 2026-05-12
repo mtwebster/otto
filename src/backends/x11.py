@@ -1,13 +1,76 @@
 import gi
 gi.require_version('Gtk', '3.0')
-from gi.repository import Gdk, GLib, Gtk
+from gi.repository import Gdk, GdkPixbuf, GLib, Gtk
+
+from backend import Backend
+
+
+def _root_pixbuf():
+    display = Gdk.Display.get_default()
+    if display is None:
+        return None
+    screen = display.get_default_screen()
+    root = screen.get_root_window()
+    w, h = root.get_width(), root.get_height()
+    return Gdk.pixbuf_get_from_window(root, 0, 0, w, h)
+
+
+def _active_window_rect():
+    display = Gdk.Display.get_default()
+    if display is None:
+        return None
+    screen = display.get_default_screen()
+    window = screen.get_active_window()
+    if window is None:
+        return None
+    frame = window.get_frame_extents()
+    return (frame.x, frame.y, frame.width, frame.height)
+
+
+def _clamp_rect(root, x, y, w, h):
+    x = max(0, x)
+    y = max(0, y)
+    w = min(w, root.get_width() - x)
+    h = min(h, root.get_height() - y)
+    if w <= 0 or h <= 0:
+        return None
+    return (x, y, w, h)
+
+
+class X11Backend(Backend):
+    def screenshot(self, include_pointer, flash):
+        return _root_pixbuf()
+
+    def screenshot_window(self, include_pointer, include_frame, flash):
+        rect = _active_window_rect()
+        root = _root_pixbuf()
+        if rect is None or root is None:
+            return None
+        clamped = _clamp_rect(root, *rect)
+        if clamped is None:
+            return None
+        x, y, w, h = clamped
+        return root.new_subpixbuf(x, y, w, h).copy()
+
+    def screenshot_area(self, x, y, w, h, flash):
+        root = _root_pixbuf()
+        if root is None:
+            return None
+        clamped = _clamp_rect(root, x, y, w, h)
+        if clamped is None:
+            return None
+        x, y, w, h = clamped
+        return root.new_subpixbuf(x, y, w, h).copy()
+
+    def select_area(self):
+        return _AreaSelector().run()
 
 
 class _AreaSelector:
     def __init__(self):
-        self.result: tuple[int, int, int, int] | None = None
-        self._start: tuple[int, int] | None = None
-        self._current: tuple[int, int] | None = None
+        self.result = None
+        self._start = None
+        self._current = None
         self._loop = GLib.MainLoop()
 
         self.window = Gtk.Window(type=Gtk.WindowType.POPUP)
@@ -24,11 +87,17 @@ class _AreaSelector:
             self.window.set_visual(visual)
 
         display = Gdk.Display.get_default()
-        monitor = display.get_primary_monitor() or display.get_monitor(0)
-        geom = monitor.get_geometry()
-        self.window.move(geom.x, geom.y)
-        self.window.resize(geom.width, geom.height)
-        self._origin = (geom.x, geom.y)
+        left = top = 2**31 - 1
+        right = bottom = -(2**31)
+        for i in range(display.get_n_monitors()):
+            g = display.get_monitor(i).get_geometry()
+            left = min(left, g.x)
+            top = min(top, g.y)
+            right = max(right, g.x + g.width)
+            bottom = max(bottom, g.y + g.height)
+        self.window.move(left, top)
+        self.window.resize(right - left, bottom - top)
+        self._origin = (left, top)
 
         self.window.set_events(
             Gdk.EventMask.BUTTON_PRESS_MASK
@@ -46,7 +115,7 @@ class _AreaSelector:
         self.window.realize()
         self.window.get_window().set_cursor(cursor)
 
-    def run(self) -> tuple[int, int, int, int] | None:
+    def run(self):
         self.window.show_all()
         self._loop.run()
         self.window.destroy()
@@ -110,7 +179,3 @@ class _AreaSelector:
         cr.rectangle(x + 0.5, y + 0.5, w, h)
         cr.stroke()
         return False
-
-
-def select_area() -> tuple[int, int, int, int] | None:
-    return _AreaSelector().run()

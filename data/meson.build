@@ -28,11 +28,3 @@ install_data(
     ],
     install_dir: datadir / 'icons' / 'hicolor' / 'symbolic' / 'apps',
 )
-
-install_data(
-    [
-        'ui/options-dialog.ui',
-        'ui/preview-window.ui',
-    ],
-    install_dir: pkgdatadir / 'ui',
-)

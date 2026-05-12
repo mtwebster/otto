@@ -1,1 +1,19 @@
-subdir('otto')
+config_py = configure_file(
+    input: '_config.py.in',
+    output: '_config.py',
+    configuration: conf,
+)
+
+install_data(
+    [
+        'application.py',
+        'backend.py',
+        'config.py',
+        'util.py',
+        config_py,
+    ],
+    install_dir: pkgdatadir,
+)
+
+subdir('backends')
+subdir('ui')
