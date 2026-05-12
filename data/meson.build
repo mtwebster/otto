@@ -7,15 +7,6 @@ i18n.merge_file(
     install_dir: datadir / 'applications',
 )
 
-i18n.merge_file(
-    input: 'org.x.Otto.metainfo.xml.in',
-    output: 'org.x.Otto.metainfo.xml',
-    type: 'xml',
-    po_dir: podir,
-    install: true,
-    install_dir: datadir / 'metainfo',
-)
-
 install_data('org.x.Otto.gschema.xml',
     install_dir: datadir / 'glib-2.0' / 'schemas',
 )
