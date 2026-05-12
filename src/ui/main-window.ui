@@ -99,9 +99,8 @@
                             <property name="spacing">6</property>
                             <property name="margin">8</property>
                             <child>
-                              <object class="GtkImage">
+                              <object class="GtkImage" id="mode_screen_icon">
                                 <property name="visible">True</property>
-                                <property name="icon-name">otto-display-symbolic</property>
                                 <property name="pixel-size">32</property>
                               </object>
                             </child>
@@ -129,9 +128,8 @@
                             <property name="spacing">6</property>
                             <property name="margin">8</property>
                             <child>
-                              <object class="GtkImage">
+                              <object class="GtkImage" id="mode_window_icon">
                                 <property name="visible">True</property>
-                                <property name="icon-name">otto-window-symbolic</property>
                                 <property name="pixel-size">32</property>
                               </object>
                             </child>
@@ -159,9 +157,8 @@
                             <property name="spacing">6</property>
                             <property name="margin">8</property>
                             <child>
-                              <object class="GtkImage">
+                              <object class="GtkImage" id="mode_area_icon">
                                 <property name="visible">True</property>
-                                <property name="icon-name">otto-selection-symbolic</property>
                                 <property name="pixel-size">32</property>
                               </object>
                             </child>

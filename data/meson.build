@@ -19,12 +19,3 @@ i18n.merge_file(
 install_data('org.x.Otto.gschema.xml',
     install_dir: datadir / 'glib-2.0' / 'schemas',
 )
-
-install_data(
-    [
-        'icons/otto-display-symbolic.svg',
-        'icons/otto-window-symbolic.svg',
-        'icons/otto-selection-symbolic.svg',
-    ],
-    install_dir: datadir / 'icons' / 'hicolor' / 'symbolic' / 'apps',
-)

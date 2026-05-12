@@ -16,4 +16,5 @@ install_data(
 )
 
 subdir('backends')
+subdir('icons')
 subdir('ui')

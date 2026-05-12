@@ -2,7 +2,7 @@ import os
 
 import gi
 gi.require_version('Gtk', '3.0')
-from gi.repository import Gdk, Gio, GLib, Gtk
+from gi.repository import Gdk, GdkPixbuf, Gio, GLib, Gtk
 
 import _config
 import util
@@ -10,6 +10,15 @@ from . import editor
 
 
 UI_FILE = os.path.join(_config.PKGDATADIR, 'ui', 'main-window.ui')
+ICON_DIR = os.path.join(_config.PKGDATADIR, 'icons')
+
+
+def _set_image_icon(image, filename, size):
+    scale = image.get_scale_factor()
+    pixbuf = GdkPixbuf.Pixbuf.new_from_file_at_scale(
+        os.path.join(ICON_DIR, filename), size * scale, size * scale, True)
+    surface = Gdk.cairo_surface_create_from_pixbuf(pixbuf, scale, None)
+    image.set_from_surface(surface)
 
 
 class _CropState:
@@ -52,6 +61,13 @@ class MainWindow:
         self._init_chrome()
 
     def _init_landing(self):
+        for image_id, filename in (
+            ('mode_screen_icon', 'otto-display-symbolic.svg'),
+            ('mode_window_icon', 'otto-window-symbolic.svg'),
+            ('mode_area_icon',   'otto-selection-symbolic.svg'),
+        ):
+            _set_image_icon(self.builder.get_object(image_id), filename, 32)
+
         s = self.app.settings
         self.delay_spin.set_value(s.delay)
         self.pointer_switch.set_active(s.include_pointer)
