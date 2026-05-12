@@ -1,6 +1,0 @@
-data/org.x.Otto.desktop.in
-data/org.x.Otto.metainfo.xml.in
-src/ui/main-window.ui
-src/application.py
-src/ui/main_window.py
-src/ui/editor.py

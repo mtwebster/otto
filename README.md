@@ -1,7 +1,7 @@
 # otto
 
-A screenshot tool for the Cinnamon desktop on Linux Mint. Replaces
-`gnome-screenshot` and keeps its command-line interface compatible.
+A screenshot tool for Linux Mint. Replaces `gnome-screenshot` and keeps its 
+command-line interface compatible.
 
 ## Capture modes
 

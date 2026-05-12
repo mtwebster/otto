@@ -98,7 +98,7 @@ class MainWindow:
         self.window.add_action(about_action)
 
         menu = Gio.Menu()
-        menu.append('About Otto', 'win.about')
+        menu.append(_('About Otto'), 'win.about')
         self.builder.get_object('menu_button').set_menu_model(menu)
 
     # ------------------------------------------------------------------
@@ -143,11 +143,11 @@ class MainWindow:
         about = Gtk.AboutDialog(transient_for=self.window, modal=True)
         about.set_program_name('Otto')
         about.set_version(_config.VERSION)
-        about.set_comments('Screenshot tool')
+        about.set_comments(_('Screenshot tool'))
         about.set_copyright('2026 Linux Mint')
         about.set_license_type(Gtk.License.GPL_3_0)
         about.set_website('https://github.com/linuxmint/otto')
-        about.set_website_label('linuxmint/otto on GitHub')
+        about.set_website_label(_('linuxmint/otto on GitHub'))
         about.set_logo_icon_name('applets-screenshooter')
         about.run()
         about.destroy()
@@ -338,11 +338,11 @@ class MainWindow:
 
     def _on_save(self, _button):
         dialog = Gtk.FileChooserNative.new(
-            'Save Screenshot',
+            _('Save Screenshot'),
             self.window,
             Gtk.FileChooserAction.SAVE,
-            'Save',
-            'Cancel',
+            _('Save'),
+            _('Cancel'),
         )
         dialog.set_do_overwrite_confirmation(True)
         dialog.set_current_name(os.path.basename(self._suggested_path))
@@ -364,7 +364,7 @@ class MainWindow:
                 modal=True,
                 message_type=Gtk.MessageType.ERROR,
                 buttons=Gtk.ButtonsType.CLOSE,
-                text='Failed to save screenshot',
+                text=_('Failed to save screenshot'),
                 secondary_text=str(exc),
             )
             err.run()

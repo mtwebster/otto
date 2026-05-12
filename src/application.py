@@ -12,8 +12,7 @@ import backend
 import util
 from config import Settings
 
-
-_ = gettext.gettext
+gettext.install(_config.GETTEXT_PACKAGE, _config.LOCALEDIR)
 
 
 class OttoApplication(Gtk.Application):
@@ -177,9 +176,6 @@ def _build_arg_parser():
     return parser
 
 def main():
-    gettext.bindtextdomain(_config.GETTEXT_PACKAGE, _config.LOCALEDIR)
-    gettext.textdomain(_config.GETTEXT_PACKAGE)
-
     parser = _build_arg_parser()
     args = parser.parse_args()
 
