@@ -403,7 +403,6 @@ class MainWindow:
         about.set_copyright('2026 Linux Mint')
         about.set_license_type(Gtk.License.GPL_3_0)
         about.set_website('https://github.com/linuxmint/otto')
-        # about.set_website_label(_('linuxmint/otto on GitHub'))
         about.set_logo_icon_name('applets-screenshooter')
         about.run()
         about.destroy()

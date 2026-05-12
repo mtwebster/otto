@@ -59,10 +59,12 @@ class OttoApplication(Gtk.Application):
         def do_capture():
             try:
                 if monitor_crop:
-                    full = self.backend.screenshot(include_pointer, flash)
+                    full = self.backend.screenshot(include_pointer, False)
                     if full and area_rect is not None:
                         x, y, w, h = area_rect
                         pixbuf = full.new_subpixbuf(x, y, w, h).copy()
+                        if flash:
+                            self.backend.flash_area(x, y, w, h)
                     else:
                         pixbuf = None
                 elif area_rect is not None:

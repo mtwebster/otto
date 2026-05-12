@@ -91,6 +91,18 @@ class CinnamonBackend(Backend):
             return None
         return self._load_and_unlink(result[1] or path)
 
+    def flash_area(self, x, y, w, h):
+        try:
+            self._bus.call_sync(
+                BUS_NAME, OBJECT_PATH, INTERFACE, 'FlashArea',
+                GLib.Variant('(iiii)', (x, y, w, h)),
+                None,
+                Gio.DBusCallFlags.NONE,
+                -1, None,
+            )
+        except GLib.Error:
+            pass
+
     def select_area(self):
         try:
             result = self._bus.call_sync(

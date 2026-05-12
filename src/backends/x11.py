@@ -1,3 +1,5 @@
+import cairo
+
 import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gdk, GdkPixbuf, GLib, Gtk, GdkX11
@@ -5,6 +7,56 @@ from gi.repository import Gdk, GdkPixbuf, GLib, Gtk, GdkX11
 from Xlib import X, display as xdisplay
 
 from backend import Backend
+
+
+_FLASH_HOLD_MS = 75
+_FLASH_TICK_MS = 8
+_FLASH_FADE_FACTOR = 0.9
+_FLASH_LOW_THRESHOLD = 0.1
+
+
+def _fire_flash(x, y, w, h):
+    """Briefly flood the given screen rect with white as visual capture
+    feedback, then fade out (on composited screens) or just blink (on
+    unredirected ones). Click-through, no focus, no taskbar entry."""
+    if w <= 0 or h <= 0:
+        return
+    win = Gtk.Window(type=Gtk.WindowType.POPUP)
+    win.set_decorated(False)
+    win.set_skip_taskbar_hint(True)
+    win.set_skip_pager_hint(True)
+    win.set_keep_above(True)
+    win.set_accept_focus(False)
+    win.set_focus_on_map(False)
+    win.override_background_color(
+        Gtk.StateFlags.NORMAL, Gdk.RGBA(1.0, 1.0, 1.0, 1.0))
+    win.realize()
+    win.get_window().input_shape_combine_region(cairo.Region(), 0, 0)
+
+    win.move(x, y)
+    win.resize(w, h)
+    win.set_opacity(1.0)
+    win.show_all()
+
+    composited = win.get_screen().is_composited()
+    state = {'opacity': 1.0}
+
+    def fade():
+        state['opacity'] *= _FLASH_FADE_FACTOR
+        if state['opacity'] <= _FLASH_LOW_THRESHOLD:
+            win.destroy()
+            return GLib.SOURCE_REMOVE
+        win.set_opacity(state['opacity'])
+        return GLib.SOURCE_CONTINUE
+
+    def start_fade():
+        if not composited:
+            win.destroy()
+            return GLib.SOURCE_REMOVE
+        GLib.timeout_add(_FLASH_TICK_MS, fade)
+        return GLib.SOURCE_REMOVE
+
+    GLib.timeout_add(_FLASH_HOLD_MS, start_fade)
 
 
 _xdisplay = None
@@ -116,7 +168,10 @@ def _clamp_rect(root, x, y, w, h):
 
 class X11Backend(Backend):
     def screenshot(self, include_pointer, flash):
-        return _root_pixbuf()
+        pixbuf = _root_pixbuf()
+        if flash and pixbuf is not None:
+            _fire_flash(0, 0, pixbuf.get_width(), pixbuf.get_height())
+        return pixbuf
 
     def screenshot_window(self, include_pointer, include_frame, flash):
         display = Gdk.Display.get_default()
@@ -189,6 +244,9 @@ class X11Backend(Backend):
             pixbuf = pixbuf.new_subpixbuf(
                 left, top, pw - left - right, ph - top - bottom).copy()
 
+        if flash:
+            _fire_flash(frame.x, frame.y, frame.width, frame.height)
+
         return pixbuf
 
     def screenshot_area(self, x, y, w, h, flash):
@@ -198,8 +256,14 @@ class X11Backend(Backend):
         clamped = _clamp_rect(root, x, y, w, h)
         if clamped is None:
             return None
-        x, y, w, h = clamped
-        return root.new_subpixbuf(x, y, w, h).copy()
+        cx, cy, cw, ch = clamped
+        pixbuf = root.new_subpixbuf(cx, cy, cw, ch).copy()
+        if flash:
+            _fire_flash(cx, cy, cw, ch)
+        return pixbuf
+
+    def flash_area(self, x, y, w, h):
+        _fire_flash(x, y, w, h)
 
     def select_area(self):
         return _AreaSelector().run()

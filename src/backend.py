@@ -11,6 +11,9 @@ class Backend:
     def screenshot_area(self, x, y, w, h, flash):
         pass
 
+    def flash_area(self, x, y, w, h):
+        pass
+
     def select_area(self):
         pass
 
