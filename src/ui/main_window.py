@@ -181,14 +181,19 @@ class MainWindow:
             s.delay = delay
             s.include_pointer = self.pointer_button.get_active()
 
-        if self.window.get_visible():
-            self.window.hide()
-
         def done(pixbuf):
             self._set_preview(pixbuf)
             self.window.show_all()
 
-        self.app.capture(mode, include_pointer, delay, done, area_rect=area_rect)
+        def start_capture():
+            self.app.capture(mode, include_pointer, delay, done, area_rect=area_rect)
+            return GLib.SOURCE_REMOVE
+
+        if self.window.get_visible():
+            self.window.hide()
+            GLib.timeout_add(200, start_capture)
+        else:
+            start_capture()
 
     def _set_preview(self, pixbuf):
         if pixbuf is None:
