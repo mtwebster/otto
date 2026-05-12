@@ -32,10 +32,8 @@ class OttoApplication(Gtk.Application):
             self._run_clipboard()
         elif args.file:
             self._run_save_to_file(args.file)
-        elif args.interactive:
-            self._run_interactive()
         else:
-            self._run_quick_capture()
+            self._run_window()
 
     def _resolve_mode(self):
         if self.args.window:
@@ -73,26 +71,10 @@ class OttoApplication(Gtk.Application):
         else:
             GLib.idle_add(do_capture)
 
-    def _run_quick_capture(self):
-        self.hold()
-        mode = self._resolve_mode()
-        include_pointer = self.args.include_pointer or self.settings.include_pointer
-        delay = self.args.delay if self.args.delay is not None else 0
-
-        def done(pixbuf):
-            self.release()
-            if pixbuf is None:
-                self._exit_code = 1
-                self.quit()
-                return
-            self._show_preview(pixbuf)
-
-        self.capture(mode, include_pointer, delay, done)
-
-    def _run_interactive(self):
+    def _run_window(self):
         from ui.main_window import MainWindow
         win = MainWindow(self)
-        win.show_landing()
+        win.run()
 
     def _run_clipboard(self):
         self.hold()
@@ -135,15 +117,6 @@ class OttoApplication(Gtk.Application):
             self.quit()
 
         self.capture(mode, include_pointer, delay, done)
-
-    def _show_preview(self, pixbuf):
-        from ui.main_window import MainWindow
-        suggested = util.build_filename(
-            preferred_dir=self.settings.last_save_directory or self.settings.auto_save_directory,
-            file_type=self.settings.default_file_type or 'png',
-        )
-        win = MainWindow(self)
-        win.show_preview(pixbuf, suggested)
 
     @property
     def exit_code(self):

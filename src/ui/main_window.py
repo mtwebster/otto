@@ -34,10 +34,6 @@ class MainWindow:
         self.window = self.builder.get_object('window')
         self.window.set_application(app)
 
-        self.stack = self.builder.get_object('stack')
-        self.back_button = self.builder.get_object('back_button')
-        self.action_bar = self.builder.get_object('action_bar')
-
         self.mode_screen = self.builder.get_object('mode_screen')
         self.mode_monitor = self.builder.get_object('mode_monitor')
         self.mode_window = self.builder.get_object('mode_window')
@@ -48,7 +44,11 @@ class MainWindow:
 
         self.preview_area = self.builder.get_object('preview_area')
         self.crop_actions = self.builder.get_object('crop_actions')
+
+        self.crop_button = self.builder.get_object('crop_button')
         self.undo_button = self.builder.get_object('undo_button')
+        self.copy_button = self.builder.get_object('copy_button')
+        self.save_button = self.builder.get_object('save_button')
 
         self._pixbuf = None
         self._undo = None
@@ -57,11 +57,22 @@ class MainWindow:
         self._crop = _CropState()
         self._render_rect = (0, 0, 0, 0, 1.0)
 
-        self._init_landing()
+        self._init_options()
         self._init_preview()
-        self._init_chrome()
+        self._init_actions()
+        self._update_action_sensitivity()
 
-    def _init_landing(self):
+    def run(self):
+        if self.app.args.interactive:
+            self.window.show_all()
+        else:
+            self._capture(initial=True)
+
+    # ------------------------------------------------------------------
+    # init
+    # ------------------------------------------------------------------
+
+    def _init_options(self):
         for image_id, filename in (
             ('mode_screen_icon',  'otto-display-symbolic.svg'),
             ('mode_monitor_icon', 'otto-display-symbolic.svg'),
@@ -70,15 +81,15 @@ class MainWindow:
         ):
             _set_image_icon(self.builder.get_object(image_id), filename, 32)
 
-        n_monitors = Gdk.Display.get_default().get_n_monitors()
-        self.mode_monitor.set_sensitive(n_monitors > 1)
+        self.mode_monitor.set_sensitive(Gdk.Display.get_default().get_n_monitors() > 1)
 
         s = self.app.settings
-        self.delay_spin.set_value(s.delay)
-        self.pointer_switch.set_active(s.include_pointer)
-        if self.app.args.window:
+        args = self.app.args
+        self.delay_spin.set_value(args.delay if args.delay is not None else s.delay)
+        self.pointer_switch.set_active(args.include_pointer or s.include_pointer)
+        if args.window:
             self.mode_window.set_active(True)
-        elif self.app.args.area:
+        elif args.area:
             self.mode_area.set_active(True)
 
         for radio in (self.mode_screen, self.mode_monitor, self.mode_window, self.mode_area):
@@ -97,9 +108,9 @@ class MainWindow:
         self.preview_area.connect('motion-notify-event', self._on_motion)
         self.preview_area.connect('button-release-event', self._on_release)
 
-        self.builder.get_object('crop_button').connect('clicked', self._on_crop)
+        self.crop_button.connect('clicked', self._on_crop)
         self.undo_button.connect('clicked', self._on_undo)
-        self.builder.get_object('copy_button').connect('clicked', self._on_copy)
+        self.copy_button.connect('clicked', self._on_copy)
         self.builder.get_object('crop_apply_button').connect('clicked', self._on_crop_apply)
         self.builder.get_object('crop_cancel_button').connect('clicked', self._on_crop_cancel)
 
@@ -109,10 +120,9 @@ class MainWindow:
                       lambda *_: self._on_undo(None) or True)
         self.window.add_accel_group(accel)
 
-    def _init_chrome(self):
-        self.back_button.connect('clicked', self._on_back)
+    def _init_actions(self):
+        self.save_button.connect('clicked', self._on_save)
         self.builder.get_object('cancel_button').connect('clicked', self._on_cancel)
-        self.builder.get_object('save_button').connect('clicked', self._on_save)
 
         about_action = Gio.SimpleAction.new('about', None)
         about_action.connect('activate', self._on_about)
@@ -123,58 +133,7 @@ class MainWindow:
         self.builder.get_object('menu_button').set_menu_model(menu)
 
     # ------------------------------------------------------------------
-    # page navigation
-    # ------------------------------------------------------------------
-
-    def show_landing(self):
-        self._set_page('landing')
-        self.window.show_all()
-        self._update_chrome()
-
-    def show_preview(self, pixbuf, suggested_path):
-        self._pixbuf = pixbuf
-        self._undo = None
-        self._suggested_path = suggested_path
-        self._crop_active = False
-        self.undo_button.set_sensitive(False)
-        self.crop_actions.hide()
-        self._set_page('preview')
-        self.window.show_all()
-        self.crop_actions.hide()
-        self.preview_area.queue_draw()
-        self._update_chrome()
-
-    def _set_page(self, name):
-        self.stack.set_visible_child_name(name)
-
-    def _update_chrome(self):
-        is_preview = self.stack.get_visible_child_name() == 'preview'
-        self.back_button.set_visible(is_preview)
-        self.action_bar.set_visible(is_preview)
-
-    def _on_back(self, _b):
-        self._pixbuf = None
-        self._undo = None
-        self._crop_active = False
-        self.crop_actions.hide()
-        self._set_page('landing')
-        self._update_chrome()
-
-    def _on_about(self, _action, _param):
-        about = Gtk.AboutDialog(transient_for=self.window, modal=True)
-        about.set_program_name('Otto')
-        about.set_version(_config.VERSION)
-        about.set_comments(_('Screenshot tool'))
-        about.set_copyright('2026 Linux Mint')
-        about.set_license_type(Gtk.License.GPL_3_0)
-        about.set_website('https://github.com/linuxmint/otto')
-        about.set_website_label(_('linuxmint/otto on GitHub'))
-        about.set_logo_icon_name('applets-screenshooter')
-        about.run()
-        about.destroy()
-
-    # ------------------------------------------------------------------
-    # landing page
+    # mode handling and capture
     # ------------------------------------------------------------------
 
     def _on_mode_toggled(self, _radio):
@@ -201,43 +160,68 @@ class MainWindow:
         return (geom.x, geom.y, geom.width, geom.height)
 
     def _on_take_clicked(self, _b):
-        mode = self._resolved_mode()
+        self._capture()
 
+    def _capture(self, initial=False):
+        self._crop_active = False
+        self.crop_actions.hide()
+
+        mode = self._resolved_mode()
         area_rect = None
         if mode == 'monitor':
             area_rect = self._current_monitor_rect()
             mode = 'area' if area_rect is not None else 'screen'
 
         include_pointer = self.pointer_switch.get_active() and mode != 'area'
-        delay = int(self.delay_spin.get_value())
 
-        s = self.app.settings
-        s.delay = delay
-        s.include_pointer = self.pointer_switch.get_active()
+        if initial:
+            delay = self.app.args.delay if self.app.args.delay is not None else 0
+        else:
+            delay = int(self.delay_spin.get_value())
+            s = self.app.settings
+            s.delay = delay
+            s.include_pointer = self.pointer_switch.get_active()
 
-        self.window.hide()
+        if self.window.get_visible():
+            self.window.hide()
 
         def done(pixbuf):
-            if pixbuf is None:
-                self.window.show()
-                self._update_chrome()
-                return
-            suggested = util.build_filename(
-                preferred_dir=s.last_save_directory or s.auto_save_directory,
-                file_type=s.default_file_type or 'png',
-            )
-            self.show_preview(pixbuf, suggested)
+            self._set_preview(pixbuf)
+            self.window.show_all()
 
         self.app.capture(mode, include_pointer, delay, done, area_rect=area_rect)
+
+    def _set_preview(self, pixbuf):
+        if pixbuf is None:
+            self._update_action_sensitivity()
+            return
+        self._pixbuf = pixbuf
+        self._undo = None
+        s = self.app.settings
+        self._suggested_path = util.build_filename(
+            preferred_dir=s.last_save_directory or s.auto_save_directory,
+            file_type=s.default_file_type or 'png',
+        )
+        self._update_action_sensitivity()
+        self.preview_area.queue_draw()
+
+    def _update_action_sensitivity(self):
+        has_preview = self._pixbuf is not None
+        self.crop_button.set_sensitive(has_preview)
+        self.copy_button.set_sensitive(has_preview)
+        self.save_button.set_sensitive(has_preview)
+        self.undo_button.set_sensitive(has_preview and self._undo is not None)
 
     # ------------------------------------------------------------------
     # preview rendering
     # ------------------------------------------------------------------
 
     def _on_draw(self, widget, cr):
-        if self._pixbuf is None:
-            return False
         alloc = widget.get_allocation()
+        if self._pixbuf is None:
+            self._draw_placeholder(cr, alloc)
+            return False
+
         pw, ph = self._pixbuf.get_width(), self._pixbuf.get_height()
         if pw == 0 or ph == 0:
             return False
@@ -259,6 +243,17 @@ class MainWindow:
             self._draw_crop_overlay(cr, alloc)
 
         return False
+
+    def _draw_placeholder(self, cr, alloc):
+        cr.set_source_rgba(0, 0, 0, 0.35)
+        cr.select_font_face('Sans')
+        cr.set_font_size(14)
+        text = _('Take a screenshot to begin')
+        extents = cr.text_extents(text)
+        x = (alloc.width - extents.width) / 2 - extents.x_bearing
+        y = (alloc.height - extents.height) / 2 - extents.y_bearing
+        cr.move_to(x, y)
+        cr.show_text(text)
 
     def _draw_crop_overlay(self, cr, alloc):
         cr.save()
@@ -313,6 +308,8 @@ class MainWindow:
         return True
 
     def _on_crop(self, _button):
+        if self._pixbuf is None:
+            return
         self._crop_active = True
         self._crop.start = None
         self._crop.current = None
@@ -341,14 +338,10 @@ class MainWindow:
         ph = sh / scale
         self._apply(lambda p: editor.crop(p, int(px), int(py), int(pw), int(ph)))
 
-    # ------------------------------------------------------------------
-    # operations
-    # ------------------------------------------------------------------
-
     def _apply(self, op):
         self._undo = self._pixbuf
         self._pixbuf = op(self._pixbuf)
-        self.undo_button.set_sensitive(True)
+        self._update_action_sensitivity()
         self.preview_area.queue_draw()
 
     def _on_undo(self, _button):
@@ -356,18 +349,20 @@ class MainWindow:
             return
         self._pixbuf = self._undo
         self._undo = None
-        self.undo_button.set_sensitive(False)
+        self._update_action_sensitivity()
         self.preview_area.queue_draw()
 
     # ------------------------------------------------------------------
-    # action bar
+    # action buttons
     # ------------------------------------------------------------------
 
-    def _on_cancel(self, _button):
+    def _on_cancel(self, _b):
         self.window.destroy()
         self.app.quit()
 
-    def _on_copy(self, _button):
+    def _on_copy(self, _b):
+        if self._pixbuf is None:
+            return
         util.copy_pixbuf_to_clipboard(self._pixbuf)
         GLib.idle_add(self._after_copy)
 
@@ -376,7 +371,9 @@ class MainWindow:
         self.app.quit()
         return GLib.SOURCE_REMOVE
 
-    def _on_save(self, _button):
+    def _on_save(self, _b):
+        if self._pixbuf is None:
+            return
         dialog = Gtk.FileChooserNative.new(
             _('Save Screenshot'),
             self.window,
@@ -414,3 +411,16 @@ class MainWindow:
         self.app.settings.last_save_directory = os.path.dirname(path)
         self.window.destroy()
         self.app.quit()
+
+    def _on_about(self, _action, _param):
+        about = Gtk.AboutDialog(transient_for=self.window, modal=True)
+        about.set_program_name('Otto')
+        about.set_version(_config.VERSION)
+        about.set_comments(_('Screenshot tool'))
+        about.set_copyright('2026 Linux Mint')
+        about.set_license_type(Gtk.License.GPL_3_0)
+        about.set_website('https://github.com/linuxmint/otto')
+        about.set_website_label(_('linuxmint/otto on GitHub'))
+        about.set_logo_icon_name('applets-screenshooter')
+        about.run()
+        about.destroy()
