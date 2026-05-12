@@ -339,55 +339,79 @@
           </packing>
         </child>
         <child>
-          <object class="GtkOverlay" id="preview_overlay">
+          <object class="GtkStack" id="preview_stack">
             <property name="visible">True</property>
             <property name="can-focus">False</property>
             <child>
-              <object class="GtkDrawingArea" id="preview_area">
+              <object class="GtkLabel" id="placeholder_label">
                 <property name="visible">True</property>
                 <property name="can-focus">False</property>
+                <property name="halign">center</property>
+                <property name="valign">center</property>
+                <property name="label" translatable="yes">Take a screenshot to begin</property>
+                <style>
+                  <class name="dim-label"/>
+                </style>
               </object>
               <packing>
-                <property name="index">-1</property>
+                <property name="name">placeholder</property>
               </packing>
             </child>
-            <child type="overlay">
-              <object class="GtkBox" id="crop_actions">
+            <child>
+              <object class="GtkOverlay" id="preview_overlay">
+                <property name="visible">True</property>
                 <property name="can-focus">False</property>
-                <property name="no-show-all">True</property>
-                <property name="halign">center</property>
-                <property name="valign">end</property>
-                <property name="spacing">6</property>
                 <child>
-                  <object class="GtkButton" id="crop_cancel_button">
-                    <property name="label" translatable="yes">Cancel</property>
+                  <object class="GtkDrawingArea" id="preview_area">
                     <property name="visible">True</property>
                     <property name="can-focus">False</property>
-                    <property name="receives-default">False</property>
                   </object>
                   <packing>
-                    <property name="expand">False</property>
-                    <property name="fill">True</property>
-                    <property name="position">0</property>
+                    <property name="index">-1</property>
                   </packing>
                 </child>
-                <child>
-                  <object class="GtkButton" id="crop_apply_button">
-                    <property name="label" translatable="yes">Apply</property>
-                    <property name="visible">True</property>
+                <child type="overlay">
+                  <object class="GtkBox" id="crop_actions">
                     <property name="can-focus">False</property>
-                    <property name="receives-default">False</property>
-                    <style>
-                      <class name="suggested-action"/>
-                    </style>
+                    <property name="no-show-all">True</property>
+                    <property name="halign">center</property>
+                    <property name="valign">end</property>
+                    <property name="spacing">6</property>
+                    <child>
+                      <object class="GtkButton" id="crop_cancel_button">
+                        <property name="label" translatable="yes">Cancel</property>
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="receives-default">False</property>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">0</property>
+                      </packing>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="crop_apply_button">
+                        <property name="label" translatable="yes">Apply</property>
+                        <property name="visible">True</property>
+                        <property name="can-focus">False</property>
+                        <property name="receives-default">False</property>
+                        <style>
+                          <class name="suggested-action"/>
+                        </style>
+                      </object>
+                      <packing>
+                        <property name="expand">False</property>
+                        <property name="fill">True</property>
+                        <property name="position">1</property>
+                      </packing>
+                    </child>
                   </object>
-                  <packing>
-                    <property name="expand">False</property>
-                    <property name="fill">True</property>
-                    <property name="position">1</property>
-                  </packing>
                 </child>
               </object>
+              <packing>
+                <property name="name">preview</property>
+              </packing>
             </child>
           </object>
           <packing>

@@ -42,6 +42,7 @@ class MainWindow:
         self.delay_spin = self.builder.get_object('delay_spin')
         self.take_button = self.builder.get_object('take_button')
 
+        self.preview_stack = self.builder.get_object('preview_stack')
         self.preview_area = self.builder.get_object('preview_area')
         self.crop_actions = self.builder.get_object('crop_actions')
 
@@ -207,6 +208,7 @@ class MainWindow:
 
     def _update_action_sensitivity(self):
         has_preview = self._pixbuf is not None
+        self.preview_stack.set_visible_child_name('preview' if has_preview else 'placeholder')
         self.crop_button.set_sensitive(has_preview)
         self.copy_button.set_sensitive(has_preview)
         self.save_button.set_sensitive(has_preview)
@@ -217,11 +219,9 @@ class MainWindow:
     # ------------------------------------------------------------------
 
     def _on_draw(self, widget, cr):
-        alloc = widget.get_allocation()
         if self._pixbuf is None:
-            self._draw_placeholder(cr, alloc)
             return False
-
+        alloc = widget.get_allocation()
         pw, ph = self._pixbuf.get_width(), self._pixbuf.get_height()
         if pw == 0 or ph == 0:
             return False
@@ -243,17 +243,6 @@ class MainWindow:
             self._draw_crop_overlay(cr, alloc)
 
         return False
-
-    def _draw_placeholder(self, cr, alloc):
-        cr.set_source_rgba(0, 0, 0, 0.35)
-        cr.select_font_face('Sans')
-        cr.set_font_size(14)
-        text = _('Take a screenshot to begin')
-        extents = cr.text_extents(text)
-        x = (alloc.width - extents.width) / 2 - extents.x_bearing
-        y = (alloc.height - extents.height) / 2 - extents.y_bearing
-        cr.move_to(x, y)
-        cr.show_text(text)
 
     def _draw_crop_overlay(self, cr, alloc):
         cr.save()
