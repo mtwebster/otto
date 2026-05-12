@@ -45,6 +45,12 @@ class OttoApplication(Gtk.Application):
     def capture(self, mode, include_pointer, delay, on_done, area_rect=None):
         flash = True
 
+        # Monitor mode passes its rect in advance; interactive area mode
+        # runs the selector now to get one. Both end up at the same
+        # area_rect-driven capture path below, but they take different
+        # routes because the DBus ScreenshotArea has no cursor overlay.
+        monitor_crop = mode == 'monitor' and area_rect is not None
+
         if mode == 'area' and area_rect is None:
             area_rect = self.backend.select_area()
             if area_rect is None:
@@ -53,7 +59,14 @@ class OttoApplication(Gtk.Application):
 
         def do_capture():
             try:
-                if area_rect is not None:
+                if monitor_crop:
+                    full = self.backend.screenshot(include_pointer, flash)
+                    if full and area_rect is not None:
+                        x, y, w, h = area_rect
+                        pixbuf = full.new_subpixbuf(x, y, w, h).copy()
+                    else:
+                        pixbuf = None
+                elif area_rect is not None:
                     x, y, w, h = area_rect
                     pixbuf = self.backend.screenshot_area(x, y, w, h, flash)
                 elif mode == 'window':

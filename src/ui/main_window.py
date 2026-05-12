@@ -129,8 +129,7 @@ class MainWindow:
     # ------------------------------------------------------------------
 
     def _on_mode_toggled(self, _radio):
-        is_area_capture = self.mode_area.get_active() or self.mode_monitor.get_active()
-        self.pointer_button.set_sensitive(not is_area_capture)
+        self.pointer_button.set_sensitive(not self.mode_area.get_active())
 
     def _selected_delay(self):
         for v, radio in self.delay_radios.items():
@@ -166,12 +165,13 @@ class MainWindow:
 
     def _capture(self, initial=False):
         mode = self._resolved_mode()
+        include_pointer = self.pointer_button.get_active() and mode != 'area'
+
         area_rect = None
         if mode == 'monitor':
             area_rect = self._current_monitor_rect()
-            mode = 'area' if area_rect is not None else 'screen'
-
-        include_pointer = self.pointer_button.get_active() and mode != 'area'
+            if area_rect is None:
+                mode = 'screen'
 
         if initial:
             delay = self.app.args.delay if self.app.args.delay is not None else 0
