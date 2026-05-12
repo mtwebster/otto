@@ -1,2 +1,3 @@
 src/application.py
+src/prefs.py
 src/ui/main_window.py

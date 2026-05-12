@@ -8,7 +8,7 @@ install_data(
     [
         'application.py',
         'backend.py',
-        'config.py',
+        'prefs.py',
         'util.py',
         config_py,
     ],

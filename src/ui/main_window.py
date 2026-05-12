@@ -5,6 +5,7 @@ gi.require_version('Gtk', '3.0')
 from gi.repository import Gdk, Gio, GLib, Gtk
 
 import _config
+import prefs
 import util
 from . import editor
 
@@ -72,10 +73,9 @@ class MainWindow:
     def _init_options(self):
         self.mode_monitor.set_sensitive(Gdk.Display.get_default().get_n_monitors() > 1)
 
-        s = self.app.settings
         args = self.app.args
-        self._set_delay(args.delay if args.delay is not None else s.delay)
-        self.pointer_button.set_active(args.include_pointer or s.include_pointer)
+        self._set_delay(args.delay if args.delay is not None else prefs.get_delay())
+        self.pointer_button.set_active(args.include_pointer or prefs.get_include_pointer())
         if args.window:
             self.mode_window.set_active(True)
         elif args.area:
@@ -106,6 +106,8 @@ class MainWindow:
         accel.connect(Gdk.KEY_z, Gdk.ModifierType.CONTROL_MASK,
                       Gtk.AccelFlags.VISIBLE,
                       lambda *_: self._on_undo(None) or True)
+        accel.connect(Gdk.KEY_Escape, 0, Gtk.AccelFlags.VISIBLE,
+                      lambda *_: self._on_cancel(None) or True)
         self.window.add_accel_group(accel)
 
     def _on_preview_realize(self, widget):
@@ -118,6 +120,10 @@ class MainWindow:
         self.builder.get_object('cancel_button').connect('clicked', self._on_cancel)
 
         menu = Gtk.Menu()
+        prefs_item = Gtk.MenuItem(label=_('Preferences'))
+        prefs_item.connect('activate', self._on_preferences)
+        menu.append(prefs_item)
+        menu.append(Gtk.SeparatorMenuItem())
         about_item = Gtk.MenuItem(label=_('About Otto'))
         about_item.connect('activate', self._on_about)
         menu.append(about_item)
@@ -177,9 +183,8 @@ class MainWindow:
             delay = self.app.args.delay if self.app.args.delay is not None else 0
         else:
             delay = self._selected_delay()
-            s = self.app.settings
-            s.delay = delay
-            s.include_pointer = self.pointer_button.get_active()
+            prefs.set_delay(delay)
+            prefs.set_include_pointer(self.pointer_button.get_active())
 
         def done(pixbuf):
             self._set_preview(pixbuf)
@@ -204,10 +209,9 @@ class MainWindow:
         self._crop.start = None
         self._crop.current = None
         self._crop.dragging = False
-        s = self.app.settings
         self._suggested_path = util.build_filename(
-            preferred_dir=s.last_save_directory or s.auto_save_directory,
-            file_type=s.default_file_type or 'png',
+            preferred_dir=prefs.get_save_directory(),
+            file_type=prefs.get_default_file_type() or 'png',
         )
         self._update_action_sensitivity()
         self.preview_area.queue_draw()
@@ -385,9 +389,11 @@ class MainWindow:
             err.destroy()
             return
 
-        self.app.settings.last_save_directory = os.path.dirname(path)
         self.window.destroy()
         self.app.quit()
+
+    def _on_preferences(self, _item):
+        prefs.open_preferences(self.window)
 
     def _on_about(self, _item):
         about = Gtk.AboutDialog(transient_for=self.window, modal=True)

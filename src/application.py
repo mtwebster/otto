@@ -9,8 +9,8 @@ from gi.repository import Gio, GLib, Gtk
 
 import _config
 import backend
+import prefs
 import util
-from config import Settings
 
 gettext.install(_config.GETTEXT_PACKAGE, _config.LOCALEDIR)
 
@@ -22,7 +22,6 @@ class OttoApplication(Gtk.Application):
             flags=Gio.ApplicationFlags.NON_UNIQUE,
         )
         self.args = args
-        self.settings = Settings()
         self.backend = backend.get(force_fallback=os.environ.get('OTTO_FORCE_FALLBACK') == '1')
         self._exit_code = 0
 
@@ -92,7 +91,7 @@ class OttoApplication(Gtk.Application):
     def _run_clipboard(self):
         self.hold()
         mode = self._resolve_mode()
-        include_pointer = self.args.include_pointer or self.settings.include_pointer
+        include_pointer = self.args.include_pointer or prefs.get_include_pointer()
         delay = self.args.delay if self.args.delay is not None else 0
 
         def done(pixbuf):
@@ -114,7 +113,7 @@ class OttoApplication(Gtk.Application):
     def _run_save_to_file(self, path):
         self.hold()
         mode = self._resolve_mode()
-        include_pointer = self.args.include_pointer or self.settings.include_pointer
+        include_pointer = self.args.include_pointer or prefs.get_include_pointer()
         delay = self.args.delay if self.args.delay is not None else 0
 
         def done(pixbuf):
