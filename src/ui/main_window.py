@@ -22,6 +22,7 @@ class _CropState:
     def __init__(self):
         self.start = None
         self.current = None
+        self.dragging = False
 
 
 class MainWindow:
@@ -49,7 +50,7 @@ class MainWindow:
         self.save_button = self.builder.get_object('save_button')
 
         self._pixbuf = None
-        self._undo = None
+        self._undo_stack = []
         self._suggested_path = None
         self._crop_active = False
         self._crop = _CropState()
@@ -195,7 +196,7 @@ class MainWindow:
             self._update_action_sensitivity()
             return
         self._pixbuf = pixbuf
-        self._undo = None
+        self._undo_stack.clear()
         s = self.app.settings
         self._suggested_path = util.build_filename(
             preferred_dir=s.last_save_directory or s.auto_save_directory,
@@ -210,7 +211,7 @@ class MainWindow:
         self.crop_button.set_sensitive(has_preview)
         self.copy_button.set_sensitive(has_preview)
         self.save_button.set_sensitive(has_preview)
-        self.undo_button.set_sensitive(has_preview and self._undo is not None)
+        self.undo_button.set_sensitive(has_preview and bool(self._undo_stack))
 
     # ------------------------------------------------------------------
     # preview rendering
@@ -243,23 +244,29 @@ class MainWindow:
         return False
 
     def _draw_crop_overlay(self, cr, alloc):
-        cr.save()
-        cr.set_source_rgba(0, 0, 0, 0.5)
-        cr.rectangle(0, 0, alloc.width, alloc.height)
-        cr.fill()
-
         sel = self._current_selection_widget_coords()
-        if sel is not None:
-            sx, sy, sw, sh = sel
-            cr.set_operator(0)  # CLEAR
-            cr.rectangle(sx, sy, sw, sh)
-            cr.fill()
-            cr.set_operator(1)  # OVER
-            cr.set_source_rgb(1.0, 1.0, 1.0)
-            cr.set_line_width(1.0)
-            cr.rectangle(sx + 0.5, sy + 0.5, sw, sh)
-            cr.stroke()
+        if sel is None:
+            return
+        sx, sy, sw, sh = sel
+        cr.save()
+        cr.set_line_width(1.0)
+        cr.rectangle(sx + 0.5, sy + 0.5, sw, sh)
+        cr.set_source_rgb(1.0, 1.0, 1.0)
+        cr.stroke_preserve()
+        cr.set_source_rgb(0.0, 0.0, 0.0)
+        cr.set_dash([4.0, 4.0])
+        cr.stroke()
         cr.restore()
+
+    def _set_crop_cursor(self, active):
+        gdk_window = self.preview_area.get_window()
+        if gdk_window is None:
+            return
+        cursor = None
+        if active:
+            cursor = Gdk.Cursor.new_for_display(
+                Gdk.Display.get_default(), Gdk.CursorType.CROSSHAIR)
+        gdk_window.set_cursor(cursor)
 
     def _current_selection_widget_coords(self):
         if self._crop.start is None or self._crop.current is None:
@@ -277,20 +284,22 @@ class MainWindow:
             return False
         self._crop.start = (event.x, event.y)
         self._crop.current = (event.x, event.y)
+        self._crop.dragging = True
         self.preview_area.queue_draw()
         return True
 
     def _on_motion(self, _w, event):
-        if not self._crop_active or self._crop.start is None:
+        if not self._crop_active or not self._crop.dragging:
             return False
         self._crop.current = (event.x, event.y)
         self.preview_area.queue_draw()
         return True
 
     def _on_release(self, _w, event):
-        if not self._crop_active or event.button != 1:
+        if not self._crop_active or event.button != 1 or not self._crop.dragging:
             return False
         self._crop.current = (event.x, event.y)
+        self._crop.dragging = False
         self.preview_area.queue_draw()
         return True
 
@@ -300,18 +309,22 @@ class MainWindow:
         self._crop_active = True
         self._crop.start = None
         self._crop.current = None
+        self._crop.dragging = False
         self.crop_actions.show()
+        self._set_crop_cursor(True)
         self.preview_area.queue_draw()
 
     def _on_crop_cancel(self, _button):
         self._crop_active = False
         self.crop_actions.hide()
+        self._set_crop_cursor(False)
         self.preview_area.queue_draw()
 
     def _on_crop_apply(self, _button):
         sel = self._current_selection_widget_coords()
         self._crop_active = False
         self.crop_actions.hide()
+        self._set_crop_cursor(False)
         if sel is None:
             self.preview_area.queue_draw()
             return
@@ -326,16 +339,15 @@ class MainWindow:
         self._apply(lambda p: editor.crop(p, int(px), int(py), int(pw), int(ph)))
 
     def _apply(self, op):
-        self._undo = self._pixbuf
+        self._undo_stack.append(self._pixbuf)
         self._pixbuf = op(self._pixbuf)
         self._update_action_sensitivity()
         self.preview_area.queue_draw()
 
     def _on_undo(self, _button):
-        if self._undo is None:
+        if not self._undo_stack:
             return
-        self._pixbuf = self._undo
-        self._undo = None
+        self._pixbuf = self._undo_stack.pop()
         self._update_action_sensitivity()
         self.preview_area.queue_draw()
 
@@ -351,12 +363,6 @@ class MainWindow:
         if self._pixbuf is None:
             return
         util.copy_pixbuf_to_clipboard(self._pixbuf)
-        GLib.idle_add(self._after_copy)
-
-    def _after_copy(self):
-        self.window.destroy()
-        self.app.quit()
-        return GLib.SOURCE_REMOVE
 
     def _on_save(self, _b):
         if self._pixbuf is None:
