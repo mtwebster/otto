@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gresources>
+  <gresource prefix="/org/x/Otto">
+    <file>icons/scalable/actions/otto-display-symbolic.svg</file>
+    <file>icons/scalable/actions/otto-window-symbolic.svg</file>
+    <file>icons/scalable/actions/otto-selection-symbolic.svg</file>
+    <file>icons/scalable/actions/show-pointer-symbolic.svg</file>
+    <file preprocess="xml-stripblanks">ui/main-window.ui</file>
+  </gresource>
+</gresources>

@@ -9,7 +9,7 @@ import util
 from . import editor
 
 
-UI_FILE = os.path.join(_config.PKGDATADIR, 'ui', 'main-window.ui')
+UI_RESOURCE = '/org/x/Otto/ui/main-window.ui'
 
 DELAY_VALUES = (0, 2, 4, 8)
 
@@ -27,7 +27,7 @@ class _CropState:
 class MainWindow:
     def __init__(self, app):
         self.app = app
-        self.builder = Gtk.Builder.new_from_file(UI_FILE)
+        self.builder = Gtk.Builder.new_from_resource(UI_RESOURCE)
         self.window = self.builder.get_object('window')
         self.window.set_application(app)
 
@@ -114,13 +114,12 @@ class MainWindow:
         self.save_button.connect('clicked', self._on_save)
         self.builder.get_object('cancel_button').connect('clicked', self._on_cancel)
 
-        about_action = Gio.SimpleAction.new('about', None)
-        about_action.connect('activate', self._on_about)
-        self.window.add_action(about_action)
-
-        menu = Gio.Menu()
-        menu.append(_('About Otto'), 'win.about')
-        self.builder.get_object('menu_button').set_menu_model(menu)
+        menu = Gtk.Menu()
+        about_item = Gtk.MenuItem(label=_('About Otto'))
+        about_item.connect('activate', self._on_about)
+        menu.append(about_item)
+        menu.show_all()
+        self.builder.get_object('menu_button').set_popup(menu)
 
     # ------------------------------------------------------------------
     # mode handling and capture
@@ -400,7 +399,7 @@ class MainWindow:
         self.window.destroy()
         self.app.quit()
 
-    def _on_about(self, _action, _param):
+    def _on_about(self, _item):
         about = Gtk.AboutDialog(transient_for=self.window, modal=True)
         about.set_program_name('Otto')
         about.set_version(_config.VERSION)
