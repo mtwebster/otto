@@ -12,6 +12,8 @@ from . import editor
 UI_FILE = os.path.join(_config.PKGDATADIR, 'ui', 'main-window.ui')
 ICON_DIR = os.path.join(_config.PKGDATADIR, 'icons')
 
+DELAY_VALUES = (0, 2, 4, 8)
+
 
 def _set_image_icon(image, filename, size):
     scale = image.get_scale_factor()
@@ -38,8 +40,8 @@ class MainWindow:
         self.mode_monitor = self.builder.get_object('mode_monitor')
         self.mode_window = self.builder.get_object('mode_window')
         self.mode_area = self.builder.get_object('mode_area')
-        self.pointer_switch = self.builder.get_object('pointer_switch')
-        self.delay_spin = self.builder.get_object('delay_spin')
+        self.pointer_button = self.builder.get_object('pointer_button')
+        self.delay_radios = {v: self.builder.get_object(f'delay_{v}') for v in DELAY_VALUES}
         self.take_button = self.builder.get_object('take_button')
 
         self.preview_stack = self.builder.get_object('preview_stack')
@@ -86,8 +88,8 @@ class MainWindow:
 
         s = self.app.settings
         args = self.app.args
-        self.delay_spin.set_value(args.delay if args.delay is not None else s.delay)
-        self.pointer_switch.set_active(args.include_pointer or s.include_pointer)
+        self._set_delay(args.delay if args.delay is not None else s.delay)
+        self.pointer_button.set_active(args.include_pointer or s.include_pointer)
         if args.window:
             self.mode_window.set_active(True)
         elif args.area:
@@ -139,7 +141,17 @@ class MainWindow:
 
     def _on_mode_toggled(self, _radio):
         is_area_capture = self.mode_area.get_active() or self.mode_monitor.get_active()
-        self.pointer_switch.set_sensitive(not is_area_capture)
+        self.pointer_button.set_sensitive(not is_area_capture)
+
+    def _selected_delay(self):
+        for v, radio in self.delay_radios.items():
+            if radio.get_active():
+                return v
+        return 0
+
+    def _set_delay(self, value):
+        closest = min(DELAY_VALUES, key=lambda v: abs(v - value))
+        self.delay_radios[closest].set_active(True)
 
     def _resolved_mode(self):
         if self.mode_window.get_active():
@@ -173,15 +185,15 @@ class MainWindow:
             area_rect = self._current_monitor_rect()
             mode = 'area' if area_rect is not None else 'screen'
 
-        include_pointer = self.pointer_switch.get_active() and mode != 'area'
+        include_pointer = self.pointer_button.get_active() and mode != 'area'
 
         if initial:
             delay = self.app.args.delay if self.app.args.delay is not None else 0
         else:
-            delay = int(self.delay_spin.get_value())
+            delay = self._selected_delay()
             s = self.app.settings
             s.delay = delay
-            s.include_pointer = self.pointer_switch.get_active()
+            s.include_pointer = self.pointer_button.get_active()
 
         if self.window.get_visible():
             self.window.hide()
