@@ -91,7 +91,7 @@
                         <property name="visible">True</property>
                         <property name="active">True</property>
                         <property name="draw-indicator">False</property>
-                        <property name="tooltip-text" translatable="yes">Capture the whole screen</property>
+                        <property name="tooltip-text" translatable="yes">Capture all monitors</property>
                         <child>
                           <object class="GtkBox">
                             <property name="visible">True</property>
@@ -107,7 +107,36 @@
                             <child>
                               <object class="GtkLabel">
                                 <property name="visible">True</property>
-                                <property name="label" translatable="yes">Screen</property>
+                                <property name="label" translatable="yes">Everywhere</property>
+                              </object>
+                            </child>
+                          </object>
+                        </child>
+                      </object>
+                    </child>
+
+                    <child>
+                      <object class="GtkRadioButton" id="mode_monitor">
+                        <property name="visible">True</property>
+                        <property name="group">mode_screen</property>
+                        <property name="draw-indicator">False</property>
+                        <property name="tooltip-text" translatable="yes">Capture the current monitor</property>
+                        <child>
+                          <object class="GtkBox">
+                            <property name="visible">True</property>
+                            <property name="orientation">vertical</property>
+                            <property name="spacing">6</property>
+                            <property name="margin">8</property>
+                            <child>
+                              <object class="GtkImage" id="mode_monitor_icon">
+                                <property name="visible">True</property>
+                                <property name="pixel-size">32</property>
+                              </object>
+                            </child>
+                            <child>
+                              <object class="GtkLabel">
+                                <property name="visible">True</property>
+                                <property name="label" translatable="yes">Current monitor</property>
                               </object>
                             </child>
                           </object>

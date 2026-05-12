@@ -44,11 +44,10 @@ class OttoApplication(Gtk.Application):
             return 'area'
         return 'screen'
 
-    def capture(self, mode, include_pointer, delay, on_done):
+    def capture(self, mode, include_pointer, delay, on_done, area_rect=None):
         flash = True
 
-        area_rect = None
-        if mode == 'area':
+        if mode == 'area' and area_rect is None:
             area_rect = self.backend.select_area()
             if area_rect is None:
                 on_done(None)

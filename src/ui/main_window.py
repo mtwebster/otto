@@ -39,6 +39,7 @@ class MainWindow:
         self.action_bar = self.builder.get_object('action_bar')
 
         self.mode_screen = self.builder.get_object('mode_screen')
+        self.mode_monitor = self.builder.get_object('mode_monitor')
         self.mode_window = self.builder.get_object('mode_window')
         self.mode_area = self.builder.get_object('mode_area')
         self.pointer_switch = self.builder.get_object('pointer_switch')
@@ -62,11 +63,15 @@ class MainWindow:
 
     def _init_landing(self):
         for image_id, filename in (
-            ('mode_screen_icon', 'otto-display-symbolic.svg'),
-            ('mode_window_icon', 'otto-window-symbolic.svg'),
-            ('mode_area_icon',   'otto-selection-symbolic.svg'),
+            ('mode_screen_icon',  'otto-display-symbolic.svg'),
+            ('mode_monitor_icon', 'otto-display-symbolic.svg'),
+            ('mode_window_icon',  'otto-window-symbolic.svg'),
+            ('mode_area_icon',    'otto-selection-symbolic.svg'),
         ):
             _set_image_icon(self.builder.get_object(image_id), filename, 32)
+
+        n_monitors = Gdk.Display.get_default().get_n_monitors()
+        self.mode_monitor.set_sensitive(n_monitors > 1)
 
         s = self.app.settings
         self.delay_spin.set_value(s.delay)
@@ -76,7 +81,7 @@ class MainWindow:
         elif self.app.args.area:
             self.mode_area.set_active(True)
 
-        for radio in (self.mode_screen, self.mode_window, self.mode_area):
+        for radio in (self.mode_screen, self.mode_monitor, self.mode_window, self.mode_area):
             radio.connect('toggled', self._on_mode_toggled)
         self.take_button.connect('clicked', self._on_take_clicked)
         self._on_mode_toggled(None)
@@ -173,17 +178,36 @@ class MainWindow:
     # ------------------------------------------------------------------
 
     def _on_mode_toggled(self, _radio):
-        self.pointer_switch.set_sensitive(not self.mode_area.get_active())
+        is_area_capture = self.mode_area.get_active() or self.mode_monitor.get_active()
+        self.pointer_switch.set_sensitive(not is_area_capture)
 
     def _resolved_mode(self):
         if self.mode_window.get_active():
             return 'window'
         if self.mode_area.get_active():
             return 'area'
+        if self.mode_monitor.get_active():
+            return 'monitor'
         return 'screen'
+
+    def _current_monitor_rect(self):
+        gdk_window = self.window.get_window()
+        if gdk_window is None:
+            return None
+        monitor = Gdk.Display.get_default().get_monitor_at_window(gdk_window)
+        if monitor is None:
+            return None
+        geom = monitor.get_geometry()
+        return (geom.x, geom.y, geom.width, geom.height)
 
     def _on_take_clicked(self, _b):
         mode = self._resolved_mode()
+
+        area_rect = None
+        if mode == 'monitor':
+            area_rect = self._current_monitor_rect()
+            mode = 'area' if area_rect is not None else 'screen'
+
         include_pointer = self.pointer_switch.get_active() and mode != 'area'
         delay = int(self.delay_spin.get_value())
 
@@ -204,7 +228,7 @@ class MainWindow:
             )
             self.show_preview(pixbuf, suggested)
 
-        self.app.capture(mode, include_pointer, delay, done)
+        self.app.capture(mode, include_pointer, delay, done, area_rect=area_rect)
 
     # ------------------------------------------------------------------
     # preview rendering
