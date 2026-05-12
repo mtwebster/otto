@@ -174,22 +174,7 @@ def _build_arg_parser():
                         help=_('Save the screenshot directly to PATH'))
     parser.add_argument('--version', action='store_true',
                         help=_('Print version and exit'))
-    parser.add_argument('-b', '--include-border', action='store_true',
-                        help=argparse.SUPPRESS)
-    parser.add_argument('-B', '--remove-border', action='store_true',
-                        help=argparse.SUPPRESS)
-    parser.add_argument('-e', '--border-effect', metavar='EFFECT',
-                        help=argparse.SUPPRESS)
     return parser
-
-
-def _warn_deprecated(args):
-    if args.include_border or args.remove_border:
-        print('otto: --include-border / --remove-border are deprecated and ignored',
-              file=sys.stderr)
-    if args.border_effect:
-        print('otto: --border-effect is deprecated and ignored', file=sys.stderr)
-
 
 def main():
     gettext.bindtextdomain(_config.GETTEXT_PACKAGE, _config.LOCALEDIR)
@@ -204,8 +189,6 @@ def main():
 
     if args.window and args.area:
         parser.error(_('cannot combine --window and --area'))
-
-    _warn_deprecated(args)
 
     app = OttoApplication(args)
     app.run([])

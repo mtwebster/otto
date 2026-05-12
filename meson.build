@@ -1,7 +1,7 @@
 project('otto',
-    version: '1.0.0',
+    version: '0.0.1',
     meson_version: '>=0.59.0',
-    license: 'GPL-2.0-or-later',
+    license: 'GPL-3.0-or-later',
 )
 
 pymod = import('python')
