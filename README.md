@@ -6,13 +6,13 @@ command-line interface compatible.
 ## Capture modes
 
 - whole screen (default)
+- specific monitor (`-m N`)
 - active window (`-w`)
 - selected area (`-a`)
 
 ## Output
 
-- preview window with a small editor (crop, rotate, flip) — default and
-  `--interactive` modes
+- preview window with cropping — default and `--interactive` modes
 - direct save to a path with `--file PATH`
 - direct copy to clipboard with `--clipboard`
 
@@ -44,6 +44,7 @@ dpkg-buildpackage -us -uc -b
 | `-c`, `--clipboard` | send the grab directly to the clipboard |
 | `-w`, `--window` | grab the active window |
 | `-a`, `--area` | grab a selected area |
+| `-m N`, `--monitor N` | grab monitor N (0-based index) |
 | `-p`, `--include-pointer` | include the pointer |
 | `-d N`, `--delay N` | wait N seconds before capturing |
 | `-i`, `--interactive` | show the options dialog first |

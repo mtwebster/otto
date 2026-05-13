@@ -3,7 +3,6 @@ Section: utils
 Priority: optional
 Maintainer: Linux Mint <root@linuxmint.com>
 Build-Depends:
- appstream,
  debhelper-compat (= 13),
  gettext,
  libglib2.0-bin,
@@ -15,12 +14,10 @@ Package: otto
 Architecture: all
 Depends:
  ${misc:Depends},
- gir1.2-gdkpixbuf-2.0,
  gir1.2-gtk-3.0,
  python3,
  python3-cairo,
  python3-gi,
- python3-pil,
  python3-xapp,
  python3-xlib,
 Provides: gnome-screenshot
