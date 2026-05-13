@@ -1,3 +1,5 @@
+import os
+
 import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gio, GLib, Gtk
@@ -31,16 +33,20 @@ def get_save_directory_uri():
     return settings.get_string(SAVE_DIRECTORY_KEY)
 
 def get_save_directory():
+    """Always returns an existing directory. Tries the user's saved
+    preference first; falls back to home if that path is missing or invalid."""
     uri = get_save_directory_uri()
-    if not uri:
-        return ''
-    try:
-        return Gio.File.new_for_uri(uri).get_path() or ''
-    except Exception:
-        return ''
+    if uri:
+        try:
+            path = Gio.File.new_for_uri(uri).get_path() or ''
+        except Exception:
+            path = ''
+        if path and os.path.isdir(path):
+            return path
+    return GLib.get_home_dir()
 
 def get_default_file_type():
-    return settings.get_string(DEFAULT_FILE_TYPE_KEY)
+    return settings.get_string(DEFAULT_FILE_TYPE_KEY) or 'png'
 
 def set_default_file_type(value):
     settings.set_string(DEFAULT_FILE_TYPE_KEY, value)

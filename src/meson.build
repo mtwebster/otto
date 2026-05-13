@@ -21,6 +21,7 @@ subdir('ui')
 gnome.compile_resources(
     'otto',
     'otto.gresource.xml',
+    source_dir: '.',
     gresource_bundle: true,
     install: true,
     install_dir: pkgdatadir,

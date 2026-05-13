@@ -2,7 +2,7 @@ import cairo
 
 import gi
 gi.require_version('Gtk', '3.0')
-from gi.repository import Gdk, GdkPixbuf, GLib, Gtk, GdkX11
+from gi.repository import Gdk, GLib, Gtk
 
 from Xlib import X, display as xdisplay
 
@@ -82,42 +82,6 @@ def _root_pixbuf():
     return Gdk.pixbuf_get_from_window(root, 0, 0, w, h)
 
 
-def _find_wm_xid(d, start_xid):
-    """Walk up the X11 tree to the toplevel that is a direct child of root.
-    For SSD apps the WM reparents the client into a frame window, so the
-    returned xid differs from start_xid. For CSD apps (no reparenting) the
-    returned xid equals start_xid."""
-    try:
-        win = d.create_resource_object('window', start_xid)
-        for _ in range(32):
-            tree = win.query_tree()
-            if tree.parent is None:
-                return None
-            if tree.parent.id == tree.root.id:
-                return win.id
-            win = tree.parent
-    except Exception:
-        return None
-    return None
-
-
-def _foreign_window(xid):
-    try:
-        return GdkX11.X11Window.foreign_new_for_display(
-            Gdk.Display.get_default(), xid)
-    except Exception:
-        return None
-
-
-def _x11_geometry(d, xid):
-    try:
-        xwin = d.create_resource_object('window', xid)
-        geom = xwin.get_geometry()
-        return (geom.x, geom.y, geom.width, geom.height)
-    except Exception:
-        return None
-
-
 def _gtk_frame_extents(gdk_window):
     d = _get_xdisplay()
     if d is None:
@@ -132,8 +96,6 @@ def _gtk_frame_extents(gdk_window):
     if prop is None or prop.format != 32 or len(prop.value) < 4:
         return None
     return tuple(prop.value[:4])
-
-
 
 
 def _active_window_rect():
@@ -174,79 +136,21 @@ class X11Backend(Backend):
         return pixbuf
 
     def screenshot_window(self, include_pointer, include_frame, flash):
-        display = Gdk.Display.get_default()
-        if display is None:
+        # Relies on a running compositor (Cinnamon always has one): root's
+        # composited pixmap already contains the WM-drawn frame at on-screen
+        # coordinates, so a root-rect read covers both SSD and CSD without
+        # caring which is which.
+        rect = _active_window_rect()
+        root = _root_pixbuf()
+        if rect is None or root is None:
             return None
-        window = display.get_default_screen().get_active_window()
-        if window is None:
+        clamped = _clamp_rect(root, *rect)
+        if clamped is None:
             return None
-        frame = window.get_frame_extents()
-        csd = _gtk_frame_extents(window)
-
-        # Figure out whether the WM reparented us (SSD) or not (CSD). For
-        # SSD apps we need to capture from the WM frame window so the
-        # server-drawn titlebar/borders are included; for CSD we capture
-        # from the active window itself so the client's own decorations
-        # (and transparent rounded-corner pixels) come through.
-        client_xid = None
-        try:
-            client_xid = window.get_xid()
-        except Exception:
-            pass
-        d = _get_xdisplay()
-        wm_xid = _find_wm_xid(d, client_xid) if (d is not None and client_xid is not None) else None
-        is_ssd = wm_xid is not None and wm_xid != client_xid
-
-        capture_window = window
-        if is_ssd:
-            wm_window = _foreign_window(wm_xid)
-            if wm_window is not None:
-                capture_window = wm_window
-
-        # frame_extents has different semantics for CSD vs SSD:
-        #   CSD: returns the X11 toplevel rect, which INCLUDES the client-
-        #        drawn shadow padding (we strip it later via _GTK_FRAME_EXTENTS).
-        #   SSD: returns the visible WM frame rect, EXCLUDING the WM's own
-        #        shadow padding around the frame.
-        # For SSD the X11 WM-frame window is actually larger than frame_extents
-        # because Muffin extends it out for shadow rendering. We have to query
-        # the X11 frame's true position and shift our capture origin by
-        # (frame.xy - wm_geom.xy) so we don't grab the shadow corner.
-        offset_x, offset_y = 0, 0
-        wm_geom = _x11_geometry(d, wm_xid) if (d is not None and wm_xid is not None) else None
-        if wm_geom is not None:
-            cand_x = frame.x - wm_geom[0]
-            cand_y = frame.y - wm_geom[1]
-            if 0 <= cand_x <= 256 and 0 <= cand_y <= 256:
-                offset_x, offset_y = cand_x, cand_y
-
-        # Under compositing, pixbuf_get_from_window reads from the window's
-        # offscreen pixmap, preserving its actual alpha.
-        pixbuf = Gdk.pixbuf_get_from_window(capture_window, offset_x, offset_y,
-                                            frame.width, frame.height)
-        if pixbuf is None:
-            rect = _active_window_rect()
-            root = _root_pixbuf()
-            if rect is None or root is None:
-                return None
-            clamped = _clamp_rect(root, *rect)
-            if clamped is None:
-                return None
-            x, y, w, h = clamped
-            return root.new_subpixbuf(x, y, w, h).copy()
-
-        # CSD shadow trim only applies to the CSD path. SSD captures from
-        # the WM frame, which doesn't have _GTK_FRAME_EXTENTS shadow padding.
-        if not is_ssd and csd is not None:
-            left, right, top, bottom = csd
-            pw = pixbuf.get_width()
-            ph = pixbuf.get_height()
-            pixbuf = pixbuf.new_subpixbuf(
-                left, top, pw - left - right, ph - top - bottom).copy()
-
+        x, y, w, h = clamped
+        pixbuf = root.new_subpixbuf(x, y, w, h).copy()
         if flash:
-            _fire_flash(frame.x, frame.y, frame.width, frame.height)
-
+            _fire_flash(x, y, w, h)
         return pixbuf
 
     def screenshot_area(self, x, y, w, h, flash):

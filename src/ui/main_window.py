@@ -7,12 +7,11 @@ from gi.repository import Gdk, Gio, GLib, Gtk
 import _config
 import prefs
 import util
-from . import editor
 
 
 UI_RESOURCE = '/org/x/Otto/ui/main-window.ui'
 
-DELAY_VALUES = (0, 2, 4, 8)
+DELAY_VALUES = (0, 2, 5, 10)
 
 _resource = Gio.Resource.load(os.path.join(_config.PKGDATADIR, 'otto.gresource'))
 Gio.resources_register(_resource)
@@ -74,12 +73,16 @@ class MainWindow:
         self.mode_monitor.set_sensitive(Gdk.Display.get_default().get_n_monitors() > 1)
 
         args = self.app.args
-        self._set_delay(args.delay if args.delay is not None else prefs.get_delay())
+        saved_delay = prefs.get_delay()
+        if saved_delay in self.delay_radios:
+            self.delay_radios[saved_delay].set_active(True)
         self.pointer_button.set_active(args.include_pointer or prefs.get_include_pointer())
         if args.window:
             self.mode_window.set_active(True)
         elif args.area:
             self.mode_area.set_active(True)
+        elif args.monitor is not None and self.mode_monitor.get_sensitive():
+            self.mode_monitor.set_active(True)
 
         for radio in (self.mode_screen, self.mode_monitor, self.mode_window, self.mode_area):
             radio.connect('toggled', self._on_mode_toggled)
@@ -143,39 +146,26 @@ class MainWindow:
                 return v
         return 0
 
-    def _set_delay(self, value):
-        closest = min(DELAY_VALUES, key=lambda v: abs(v - value))
-        self.delay_radios[closest].set_active(True)
-
-    def _resolved_mode(self):
-        if self.mode_window.get_active():
-            return 'window'
-        if self.mode_area.get_active():
-            return 'area'
-        if self.mode_monitor.get_active():
-            return 'monitor'
-        return 'screen'
-
-    def _current_monitor_rect(self):
-        gdk_window = self.window.get_window()
-        if gdk_window is None:
-            return None
-        monitor = Gdk.Display.get_default().get_monitor_at_window(gdk_window)
-        if monitor is None:
-            return None
-        geom = monitor.get_geometry()
-        return (geom.x, geom.y, geom.width, geom.height)
-
     def _on_take_clicked(self, _b):
         self._capture()
 
     def _capture(self, initial=False):
-        mode = self._resolved_mode()
+        if self.mode_window.get_active():
+            mode = 'window'
+        elif self.mode_area.get_active():
+            mode = 'area'
+        elif self.mode_monitor.get_active():
+            mode = 'monitor'
+        else:
+            mode = 'screen'
         include_pointer = self.pointer_button.get_active() and mode != 'area'
 
         area_rect = None
         if mode == 'monitor':
-            area_rect = self._current_monitor_rect()
+            if initial and self.app.args.monitor is not None:
+                area_rect = util.monitor_rect(self.app.args.monitor)
+            else:
+                area_rect = util.monitor_rect_for_window(self.window.get_window())
             if area_rect is None:
                 mode = 'screen'
 
@@ -210,8 +200,8 @@ class MainWindow:
         self._crop.current = None
         self._crop.dragging = False
         self._suggested_path = util.build_filename(
-            preferred_dir=prefs.get_save_directory(),
-            file_type=prefs.get_default_file_type() or 'png',
+            prefs.get_save_directory(),
+            file_type=prefs.get_default_file_type(),
         )
         self._update_action_sensitivity()
         self.preview_area.queue_draw()
@@ -318,17 +308,18 @@ class MainWindow:
         rx, ry, _rw, _rh, scale = self._render_rect
         if scale <= 0:
             return
-        px = (sx - rx) / scale
-        py = (sy - ry) / scale
-        pw = sw / scale
-        ph = sh / scale
         self._crop.start = None
         self._crop.current = None
-        self._apply(lambda p: editor.crop(p, int(px), int(py), int(pw), int(ph)))
 
-    def _apply(self, op):
+        pw = self._pixbuf.get_width()
+        ph = self._pixbuf.get_height()
+        x = max(0, min(int((sx - rx) / scale), pw))
+        y = max(0, min(int((sy - ry) / scale), ph))
+        w = max(1, min(int(sw / scale), pw - x))
+        h = max(1, min(int(sh / scale), ph - y))
+
         self._undo_stack.append(self._pixbuf)
-        self._pixbuf = op(self._pixbuf)
+        self._pixbuf = self._pixbuf.new_subpixbuf(x, y, w, h).copy()
         self._update_action_sensitivity()
         self.preview_area.queue_draw()
 

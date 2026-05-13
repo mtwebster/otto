@@ -1,7 +1,8 @@
 import os
-import tempfile
 
-from gi.repository import GdkPixbuf, Gio, GLib
+import gi
+gi.require_version('XApp', '1.0')
+from gi.repository import GdkPixbuf, Gio, GLib, XApp
 
 from backend import Backend
 
@@ -35,12 +36,7 @@ class CinnamonBackend(Backend):
         self._bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
 
     def _tempfile(self):
-        cache_dir = os.path.join(GLib.get_user_cache_dir(), 'otto')
-        os.makedirs(cache_dir, mode=0o700, exist_ok=True)
-        fd, path = tempfile.mkstemp(prefix='scr-', suffix='.png', dir=cache_dir)
-        os.close(fd)
-        os.unlink(path)
-        return path
+        return os.path.join(XApp.get_tmp_dir(), f'otto-{os.getpid()}.png')
 
     def _call(self, method, params):
         try:

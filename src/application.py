@@ -39,6 +39,8 @@ class OttoApplication(Gtk.Application):
             return 'window'
         if self.args.area:
             return 'area'
+        if self.args.monitor is not None:
+            return 'monitor'
         return 'screen'
 
     def capture(self, mode, include_pointer, delay, on_done, area_rect=None):
@@ -93,6 +95,11 @@ class OttoApplication(Gtk.Application):
     def _run_clipboard(self):
         self.hold()
         mode = self._resolve_mode()
+        area_rect = None
+        if mode == 'monitor':
+            area_rect = util.monitor_rect(self.args.monitor)
+            if area_rect is None:
+                mode = 'screen'
         include_pointer = self.args.include_pointer or prefs.get_include_pointer()
         delay = self.args.delay if self.args.delay is not None else 0
 
@@ -105,7 +112,7 @@ class OttoApplication(Gtk.Application):
                 self.release()
                 self.quit()
 
-        self.capture(mode, include_pointer, delay, done)
+        self.capture(mode, include_pointer, delay, done, area_rect=area_rect)
 
     def _finish_clipboard(self):
         self.release()
@@ -115,6 +122,11 @@ class OttoApplication(Gtk.Application):
     def _run_save_to_file(self, path):
         self.hold()
         mode = self._resolve_mode()
+        area_rect = None
+        if mode == 'monitor':
+            area_rect = util.monitor_rect(self.args.monitor)
+            if area_rect is None:
+                mode = 'screen'
         include_pointer = self.args.include_pointer or prefs.get_include_pointer()
         delay = self.args.delay if self.args.delay is not None else 0
 
@@ -130,7 +142,7 @@ class OttoApplication(Gtk.Application):
             self.release()
             self.quit()
 
-        self.capture(mode, include_pointer, delay, done)
+        self.capture(mode, include_pointer, delay, done, area_rect=area_rect)
 
     @property
     def exit_code(self):
@@ -149,6 +161,8 @@ def _build_arg_parser():
                         help='Grab the active window instead of the entire screen')
     parser.add_argument('-a', '--area', action='store_true',
                         help='Grab a selected area of the screen')
+    parser.add_argument('-m', '--monitor', type=int, default=None, metavar='INDEX',
+                        help='Grab a specific monitor by 0-based index')
     parser.add_argument('-p', '--include-pointer', action='store_true',
                         help='Include the pointer in the screenshot')
     parser.add_argument('-d', '--delay', type=int, default=None, metavar='SECONDS',
@@ -171,6 +185,8 @@ def main():
 
     if args.window and args.area:
         parser.error('cannot combine --window and --area')
+    if args.monitor is not None and (args.window or args.area):
+        parser.error('--monitor cannot be combined with --window or --area')
 
     app = OttoApplication(args)
     app.run([])

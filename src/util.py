@@ -1,11 +1,8 @@
-import datetime
-import io
 import os
 
 import gi
 gi.require_version('Gtk', '3.0')
-from gi.repository import Gdk, GdkPixbuf, GLib, Gtk
-
+from gi.repository import Gdk, GLib, Gtk
 
 _PIXBUF_FORMAT_FOR_EXT = {
     '.png':  ('png',  []),
@@ -16,11 +13,9 @@ _PIXBUF_FORMAT_FOR_EXT = {
     '.tiff': ('tiff', []),
 }
 
-
 def format_for_path(path):
     ext = os.path.splitext(path)[1].lower()
     return _PIXBUF_FORMAT_FOR_EXT.get(ext, _PIXBUF_FORMAT_FOR_EXT['.png'])
-
 
 def save_pixbuf(pixbuf, path):
     fmt, options = format_for_path(path)
@@ -28,63 +23,42 @@ def save_pixbuf(pixbuf, path):
     values = [v for _, v in options]
     pixbuf.savev(path, fmt, keys, values)
 
-
 def copy_pixbuf_to_clipboard(pixbuf):
     clipboard = Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD)
     clipboard.set_image(pixbuf)
     clipboard.store()
 
+def monitor_rect(idx):
+    """Return (x, y, w, h) of the monitor at the given index, or None if
+    the index is out of range or there's only one monitor (caller should
+    treat that as 'use the whole screen')."""
+    if idx is None:
+        return None
+    display = Gdk.Display.get_default()
+    if display is None:
+        return None
+    n = display.get_n_monitors()
+    if n <= 1 or idx < 0 or idx >= n:
+        return None
+    geom = display.get_monitor(idx).get_geometry()
+    return (geom.x, geom.y, geom.width, geom.height)
 
-def pixbuf_to_pil(pixbuf):
-    from PIL import Image
-    success, buf = pixbuf.save_to_bufferv('png', [], [])
-    if not success:
-        raise RuntimeError('failed to serialize pixbuf')
-    return Image.open(io.BytesIO(buf))
+def monitor_rect_for_window(gdk_window):
+    """Return (x, y, w, h) of the monitor the given GdkWindow is on,
+    or None if it can't be determined."""
+    if gdk_window is None:
+        return None
+    display = Gdk.Display.get_default()
+    if display is None:
+        return None
+    monitor = display.get_monitor_at_window(gdk_window)
+    if monitor is None:
+        return None
+    geom = monitor.get_geometry()
+    return (geom.x, geom.y, geom.width, geom.height)
 
-
-def pil_to_pixbuf(image):
-    buf = io.BytesIO()
-    image.save(buf, format='PNG')
-    buf.seek(0)
-    loader = GdkPixbuf.PixbufLoader.new_with_type('png')
-    loader.write(buf.getvalue())
-    loader.close()
-    return loader.get_pixbuf()
-
-
-def user_pictures_dir():
-    pictures = GLib.get_user_special_dir(GLib.UserDirectory.DIRECTORY_PICTURES)
-    return pictures or GLib.get_home_dir()
-
-
-def _candidate_dirs(preferred):
-    dirs = []
-    if preferred:
-        dirs.append(os.path.expanduser(preferred))
-    pictures = user_pictures_dir()
-    if pictures and pictures not in dirs:
-        dirs.append(pictures)
-    home = os.path.expanduser('~')
-    if home not in dirs:
-        dirs.append(home)
-    return [d for d in dirs if d]
-
-
-def build_filename(preferred_dir=None, file_type='png', origin=None):
-    if origin is None:
-        origin = datetime.datetime.now().strftime('%Y-%m-%d %H-%M-%S')
-
-    for base in _candidate_dirs(preferred_dir):
-        if not os.path.isdir(base):
-            continue
-        for i in range(0, 1000):
-            if i == 0:
-                name = f'Screenshot from {origin}.{file_type}'
-            else:
-                name = f'Screenshot from {origin} - {i}.{file_type}'
-            path = os.path.join(base, name)
-            if not os.path.exists(path):
-                return path
-    return os.path.join(os.path.expanduser('~'),
-                        f'Screenshot from {origin}.{file_type}')
+def build_filename(directory, file_type='png'):
+    """Build a 'Screenshot <iso-timestamp>.<ext>' path inside directory.
+    Caller is responsible for passing an existing directory."""
+    timestamp = GLib.DateTime.new_now_local().format('%Y-%m-%d %H-%M-%S.%f')[:-3]
+    return os.path.join(directory, f'Screenshot {timestamp}.{file_type}')
